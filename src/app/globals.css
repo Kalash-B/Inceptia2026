@@ -235,3 +235,56 @@ h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: #ffe16d;
 }
+
+/* ─── Timeline Nodes ──────────────────────────────────────────────────── */
+.timeline-node {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 215, 0, 0.35);
+  background: rgba(10, 8, 20, 0.55);
+  backdrop-filter: blur(6px);
+  box-shadow:
+    0 0 0 0 rgba(255, 215, 0, 0.25),
+    inset 0 0 8px rgba(255, 215, 0, 0.08);
+  animation: nodeBreath 3s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-node-inner {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 215, 0, 0.55);
+  box-shadow: 0 0 6px 2px rgba(255, 215, 0, 0.3);
+}
+
+@keyframes nodeBreath {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(255, 215, 0, 0.25),
+      inset 0 0 8px rgba(255, 215, 0, 0.08);
+    border-color: rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 14px 4px rgba(255, 215, 0, 0.12),
+      inset 0 0 12px rgba(255, 215, 0, 0.12);
+    border-color: rgba(255, 215, 0, 0.55);
+  }
+}
+
+.timeline-card {
+  background: rgba(8, 6, 18, 0.52);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 215, 0, 0.12);
+  border-top: 2px solid rgba(255, 215, 0, 0.32);
+  border-radius: 8px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.45),
+    inset 0 0 16px rgba(255, 215, 0, 0.025);
+}
+
