@@ -1,147 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import WandCursor from "./components/wandCursor";
+import Countdown from "./components/countdown";
+import PrizesSection from "./components/prizeSection";
+import SponsorsSection from "./components/sponsorsSection";
+import Footer from "./components/footer";
 
-// WandCursor Component
-function WandCursor() {
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [showCursor, setShowCursor] = useState(false);
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(pointer: fine)");
-    setShowCursor(mediaQuery.matches);
+<WandCursor />
 
-    const handleChange = (e: MediaQueryListEvent) => setShowCursor(e.matches);
-    mediaQuery.addEventListener("change", handleChange);
 
-    const move = (e: MouseEvent) => {
-      setPos({
-        x: e.clientX,
-        y: e.clientY,
-      });
-    };
 
-    window.addEventListener("mousemove", move);
-
-    return () => {
-      window.removeEventListener("mousemove", move);
-      mediaQuery.removeEventListener("change", handleChange);
-    };
-  }, []);
-
-  if (!showCursor) return null;
-
-  return (
-    <img
-      src="/stick.png"
-      alt="Wand"
-      className="pointer-events-none fixed z-[9999] w-12 sm:w-16 md:w-20 lg:w-24 transition-transform duration-75"
-      style={{
-        left: pos.x,
-        top: pos.y,
-        transform: "translate(-20%, -20%) rotate(-30deg)",
-      }}
-    />
-  );
-}
-
-// Countdown Component
-function Countdown() {
-  const [timeLeft, setTimeLeft] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  });
-
-  const calculateTimeLeft = () => {
-    const targetDate = new Date("2026-08-07T09:00:00");
-    const difference = targetDate.getTime() - Date.now();
-
-    if (difference <= 0) {
-      return {
-        days: 0,
-        hours: 0,
-        minutes: 0,
-        seconds: 0,
-      };
-    }
-
-    return {
-      days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-      hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-      minutes: Math.floor((difference / (1000 * 60)) % 60),
-      seconds: Math.floor((difference / 1000) % 60),
-    };
-  };
-
-  useEffect(() => {
-    setTimeLeft(calculateTimeLeft());
-
-    const interval = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="flex justify-between text-center mt-2 px-2 w-full max-w-sm mx-auto">
-      <div>
-        <span className="block font-headline-lg text-3xl text-primary-container font-bold">
-          {timeLeft.days}
-        </span>
-        <span className="font-label-md text-xs text-on-surface-variant tracking-wider">
-          DAYS
-        </span>
-      </div>
-
-      <span className="font-headline-lg text-2xl text-outline-variant font-bold">
-        :
-      </span>
-
-      <div>
-        <span className="block font-headline-lg text-3xl text-primary-container font-bold">
-          {timeLeft.hours.toString().padStart(2, "0")}
-        </span>
-        <span className="font-label-md text-xs text-on-surface-variant tracking-wider">
-          HOURS
-        </span>
-      </div>
-
-      <span className="font-headline-lg text-2xl text-outline-variant font-bold">
-        :
-      </span>
-
-      <div>
-        <span className="block font-headline-lg text-3xl text-primary-container font-bold">
-          {timeLeft.minutes.toString().padStart(2, "0")}
-        </span>
-        <span className="font-label-md text-xs text-on-surface-variant tracking-wider">
-          MINS
-        </span>
-      </div>
-
-      <span className="font-headline-lg text-2xl text-outline-variant font-bold">
-        :
-      </span>
-
-      <div>
-        <span className="block font-headline-lg text-3xl text-primary-container font-bold">
-          {timeLeft.seconds.toString().padStart(2, "0")}
-        </span>
-        <span className="font-label-md text-xs text-on-surface-variant tracking-wider">
-          SECS
-        </span>
-      </div>
-    </div>
-  );
-}
 
 function Page() {
   return (
-    <div className="relative w-full min-h-screen">
+    <div className="relative w-full">
       {/* Custom Magic Wand Cursor */}
       <WandCursor />
 
@@ -164,7 +38,7 @@ function Page() {
         {/* Hero Content (positioned on the left middle side) */}
         <div className="max-w-2xl flex flex-col items-start text-left gap-8">
           <h1
-            className="font-harry-potter text-5xl md:text-7xl text-primary drop-shadow-[0_0_20px_rgba(255,215,0,0.3)]"
+            className="font-harry-potter leading-tight text-5xl md:text-7xl text-primary drop-shadow-[0_0_20px_rgba(255,215,0,0.3)]"
           >
             INCEPTIA HACKATHON
           </h1>
@@ -323,6 +197,82 @@ function Page() {
           </div>
         </div>
       </section>
+
+      {/* Timeline Section */}
+      <section className="relative z-10 mt-32 w-full" style={{ minHeight: "100vh" }}>
+        {/* Heading — positioned above the node layout */}
+        <h2 className="font-display-lg text-4xl md:text-5xl text-primary-container text-center italic pt-10 relative z-10 drop-shadow-[0_0_12px_rgba(255,215,0,0.3)]">
+          Event Schedule
+        </h2>
+
+        <div className="absolute inset-0">
+
+          {/* ─ Central spine ─ */}
+          <div style={{
+            position: "absolute",
+            left: "50%",
+            top: "10%",
+            height: "80%",
+            width: "2px",
+            transform: "translateX(-50%)",
+            background: "linear-gradient(to bottom, transparent 0%, rgba(255,215,0,0.18) 8%, rgba(255,215,0,0.22) 50%, rgba(255,215,0,0.18) 92%, transparent 100%)",
+          }} />
+
+          {/* ══ Node 1 — 17% | RIGHT ══ */}
+          {/* node */}
+          <div className="timeline-node" style={{ position: "absolute", top: "17%", left: "50%", transform: "translate(-50%,-50%)", animationDelay: "0s", zIndex: 2 }}>
+            <div className="timeline-node-inner" />
+          </div>
+          {/* horizontal arm */}
+          <div style={{ position: "absolute", top: "17%", left: "calc(50% + 14px)", width: "7%", height: "2px", transform: "translateY(-50%)", background: "rgba(255,215,0,0.28)" }} />
+          {/* vertical drop at end of arm */}
+          <div style={{ position: "absolute", top: "calc(17% - 30px)", left: "calc(57% + 14px)", width: "2px", height: "60px", background: "rgba(255,215,0,0.18)" }} />
+          {/* card */}
+          <div className="timeline-card" style={{ position: "absolute", top: "calc(17% - 30px)", left: "calc(57% + 16px)", width: "26%", height: "60px" }} />
+
+          {/* ══ Node 2 — 33% | LEFT ══ */}
+          <div className="timeline-node" style={{ position: "absolute", top: "33%", left: "50%", transform: "translate(-50%,-50%)", animationDelay: "0.6s", zIndex: 2 }}>
+            <div className="timeline-node-inner" />
+          </div>
+          <div style={{ position: "absolute", top: "33%", right: "calc(50% + 14px)", width: "7%", height: "2px", transform: "translateY(-50%)", background: "rgba(255,215,0,0.28)" }} />
+          <div style={{ position: "absolute", top: "calc(33% - 30px)", right: "calc(57% + 14px)", width: "2px", height: "60px", background: "rgba(255,215,0,0.18)" }} />
+          <div className="timeline-card" style={{ position: "absolute", top: "calc(33% - 30px)", right: "calc(57% + 16px)", width: "26%", height: "60px" }} />
+
+          {/* ══ Node 3 — 50% | RIGHT ══ */}
+          <div className="timeline-node" style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", animationDelay: "1.2s", zIndex: 2 }}>
+            <div className="timeline-node-inner" />
+          </div>
+          <div style={{ position: "absolute", top: "50%", left: "calc(50% + 14px)", width: "7%", height: "2px", transform: "translateY(-50%)", background: "rgba(255,215,0,0.28)" }} />
+          <div style={{ position: "absolute", top: "calc(50% - 30px)", left: "calc(57% + 14px)", width: "2px", height: "60px", background: "rgba(255,215,0,0.18)" }} />
+          <div className="timeline-card" style={{ position: "absolute", top: "calc(50% - 30px)", left: "calc(57% + 16px)", width: "26%", height: "60px" }} />
+
+          {/* ══ Node 4 — 66% | LEFT ══ */}
+          <div className="timeline-node" style={{ position: "absolute", top: "66%", left: "50%", transform: "translate(-50%,-50%)", animationDelay: "1.8s", zIndex: 2 }}>
+            <div className="timeline-node-inner" />
+          </div>
+          <div style={{ position: "absolute", top: "66%", right: "calc(50% + 14px)", width: "7%", height: "2px", transform: "translateY(-50%)", background: "rgba(255,215,0,0.28)" }} />
+          <div style={{ position: "absolute", top: "calc(66% - 30px)", right: "calc(57% + 14px)", width: "2px", height: "60px", background: "rgba(255,215,0,0.18)" }} />
+          <div className="timeline-card" style={{ position: "absolute", top: "calc(66% - 30px)", right: "calc(57% + 16px)", width: "26%", height: "60px" }} />
+
+          {/* ══ Node 5 — 82% | RIGHT ══ */}
+          <div className="timeline-node" style={{ position: "absolute", top: "82%", left: "50%", transform: "translate(-50%,-50%)", animationDelay: "2.4s", zIndex: 2 }}>
+            <div className="timeline-node-inner" />
+          </div>
+          <div style={{ position: "absolute", top: "82%", left: "calc(50% + 14px)", width: "7%", height: "2px", transform: "translateY(-50%)", background: "rgba(255,215,0,0.28)" }} />
+          <div style={{ position: "absolute", top: "calc(82% - 30px)", left: "calc(57% + 14px)", width: "2px", height: "60px", background: "rgba(255,215,0,0.18)" }} />
+          <div className="timeline-card" style={{ position: "absolute", top: "calc(82% - 30px)", left: "calc(57% + 16px)", width: "26%", height: "60px" }} />
+
+        </div>
+      </section>
+
+      {/* Prize Pool Section */}
+      <PrizesSection />
+
+      {/* Sponsors Section */}
+      <SponsorsSection />
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }
