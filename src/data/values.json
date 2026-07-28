@@ -8,6 +8,15 @@
       "token": "SammyK.",
       "counter": 0,
       "avatar": "/profiles_char/harry.png"
+    },
+    {
+      "name": "Gauri Singhal",
+      "team": "Kremlin Spies",
+      "email": "gauri898@gmail.com",
+      "password": "trial",
+      "token": "GauriS.",
+      "counter": 0,
+      "avatar": "/profiles_char/voldemort.png"
     }
   ]
 }
