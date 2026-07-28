@@ -109,7 +109,6 @@ export default function ImageGallerySection() {
                     alt={`Gallery ${idx + 1}`}
                     fill
                     loading="lazy"
-                    quality={80}
                     sizes="(max-width:768px) 90vw, 420px"
                     className="object-cover transition-all duration-700 group-hover:scale-110 group-hover:rotate-1"
                   />
@@ -255,6 +254,7 @@ export default function ImageGallerySection() {
                 src={galleryImages[selectedIndex]}
                 alt={`Gallery ${selectedIndex + 1}`}
                 fill
+                sizes="100%"
                 priority
                 className="object-contain rounded-2xl"
               />
