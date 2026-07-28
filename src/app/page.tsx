@@ -188,6 +188,7 @@ function Page() {
               {/* Golden Register & Dashboard Buttons with high click priority */}
               <motion.div variants={itemVariants} className="relative z-50 flex flex-wrap items-center justify-center md:justify-start gap-4">
                 <button
+                  id="hero-register-btn"
                   onClick={() => setShowRegistrationModal(true)}
                   className="magical-btn px-8 py-4 rounded-full sm:text-base text-sm tracking-widest flex items-center gap-2 group cursor-pointer"
                 >
@@ -232,6 +233,7 @@ function Page() {
                     </h2>
 
                     <button
+                      id="modal-close-btn"
                       onClick={() => setShowRegistrationModal(false)}
                       className="text-3xl text-white hover:text-yellow-400 p-1"
                     >
@@ -295,6 +297,7 @@ function Page() {
                   {/* Buttons */}
                   <div className="flex flex-col sm:flex-row gap-4 justify-end">
                     <button
+                      id="modal-cancel-btn"
                       onClick={() => setShowRegistrationModal(false)}
                       className="px-6 py-3 rounded-xl border border-gray-600 text-white hover:bg-white/10"
                     >
@@ -302,6 +305,7 @@ function Page() {
                     </button>
 
                     <a
+                      id="modal-proceed-link"
                       href="https://unstop.com/o/KxwXi86?utm_medium=Share&utm_source=online_coding_challenge&utm_campaign=Logged_out_user"
                       target="_blank"
                       rel="noopener noreferrer"

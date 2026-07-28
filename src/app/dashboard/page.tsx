@@ -181,6 +181,7 @@ export default function DashboardPage() {
 
         <div className="flex items-center gap-3">
           <button
+            id="dashboard-sync-btn"
             onClick={() => fetchLatestParticipant(participant.email, participant.token)}
             disabled={refreshing}
             className="px-3 py-1.5 rounded-xl border border-amber-500/20 bg-neutral-900/50 text-amber-200 text-xs font-mono hover:bg-neutral-800 transition-all flex items-center gap-1.5 cursor-pointer"
@@ -193,6 +194,7 @@ export default function DashboardPage() {
 
 
           <button
+            id="dashboard-logout-btn"
             onClick={handleLogout}
             className="px-3 py-1.5 rounded-xl border border-red-500/20 bg-red-950/30 text-red-300 text-xs font-mono hover:bg-red-950/50 transition-all cursor-pointer"
           >
@@ -230,9 +232,9 @@ export default function DashboardPage() {
               <span className="text-[10px] uppercase font-mono tracking-widest text-amber-400/70">
                 Participant Profile
               </span>
-              <h2 className="text-2xl font-bold font-serif gold-spell-text uppercase tracking-wider">
+              <h1 className="text-2xl font-bold font-serif gold-spell-text uppercase tracking-wider">
                 {participant.name}
-              </h2>
+              </h1>
               <div className="text-xs font-mono font-semibold text-amber-300">
                 Team: <span className="text-neutral-100">{participant.team}</span>
               </div>
@@ -292,6 +294,7 @@ export default function DashboardPage() {
             <div className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-neutral-900/80 border border-amber-500/20 text-xs font-mono">
               <span className="text-amber-300 font-bold truncate">{participant.token}</span>
               <button
+                id="dashboard-copy-token-btn"
                 onClick={handleCopyToken}
                 className="text-[10px] uppercase font-bold text-amber-400 hover:text-amber-200 ml-1.5 cursor-pointer"
               >
