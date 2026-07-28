@@ -571,3 +571,77 @@ h6 {
   display: flex;
   width: max-content;
 }
+
+/* ==========================================
+   HARRY POTTER LIQUID GLASS UI THEME SYSTEM
+   ========================================== */
+
+/* Liquid Glass Card Container */
+.liquid-glass-card {
+  background: rgba(15, 17, 23, 0.55);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 215, 0, 0.18);
+  border-top: 1px solid rgba(255, 215, 0, 0.35);
+  border-left: 1px solid rgba(255, 215, 0, 0.25);
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.6),
+    inset 0 1px 2px rgba(255, 255, 255, 0.1),
+    0 0 25px rgba(212, 175, 55, 0.05);
+  border-radius: 1.25rem;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-card:hover {
+  border-color: rgba(255, 215, 0, 0.4);
+  box-shadow: 
+    0 25px 60px rgba(0, 0, 0, 0.75),
+    inset 0 1px 3px rgba(255, 255, 255, 0.15),
+    0 0 35px rgba(212, 175, 55, 0.12);
+}
+
+/* Liquid Input Control */
+.liquid-input {
+  background: rgba(8, 10, 15, 0.6);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  color: #f3f4f6;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.liquid-input:focus {
+  outline: none;
+  border-color: rgba(255, 215, 0, 0.7);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.25), inset 0 0 10px rgba(255, 215, 0, 0.05);
+}
+
+/* Golden Spellbound Text */
+.gold-spell-text {
+  background: linear-gradient(135deg, #fff7d6 0%, #ffd700 40%, #d4af37 80%, #996515 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 8px rgba(255, 215, 0, 0.25));
+}
+
+/* Glowing Border Accent */
+.gold-glow-ring {
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.25), inset 0 0 15px rgba(255, 215, 0, 0.1);
+}
+
+/* Status Badge - Claimed / Verified */
+.badge-claimed {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
+}
+
+/* Status Badge - Pending / Unclaimed */
+.badge-pending {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fde047;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+}

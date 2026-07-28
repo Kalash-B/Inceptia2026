@@ -11,6 +11,16 @@ const participantSchema = new mongoose.Schema({
         required: true,
         default: "Unknown"
     },
+    email: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    password: {
+        type: String,
+        required: true,
+        default: "sammytried"
+    },
     token: {
         type: String,
         required: true
@@ -18,6 +28,10 @@ const participantSchema = new mongoose.Schema({
     counter: {
         type: Number,
         default: 0
+    },
+    avatar: {
+        type: String,
+        default: ""
     }
 })
 

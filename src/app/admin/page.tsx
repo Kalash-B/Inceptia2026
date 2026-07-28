@@ -3,100 +3,121 @@
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 interface ParticipantInfo {
   name: string;
   team: string;
+  email: string;
+  token: string;
   counter: number;
 }
 
-export default function Page() {
+export default function AdminPage() {
   const [isMounted, setIsMounted] = useState<boolean>(false);
   const [digit, setDigit] = useState<number>(1);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'already_scanned' | 'error'>('idle');
   const [message, setMessage] = useState<string>('');
   const [participant, setParticipant] = useState<ParticipantInfo | null>(null);
   const [scanning, setScanning] = useState<boolean>(true);
+  const [manualToken, setManualToken] = useState<string>('');
+  
+  // Roster state
+  const [roster, setRoster] = useState<ParticipantInfo[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterCounter, setFilterCounter] = useState<string>('all');
+  const [loadingRoster, setLoadingRoster] = useState<boolean>(false);
 
   const digitRef = useRef(1);
 
-  // Set isMounted to true after the component mounts on the client
   useEffect(() => {
     setIsMounted(true);
+    fetchRoster();
   }, []);
 
   useEffect(() => {
     digitRef.current = digit;
   }, [digit]);
 
+  const fetchRoster = async () => {
+    try {
+      setLoadingRoster(true);
+      const res = await fetch("/api/scan");
+      const data = await res.json();
+      if (res.ok && data.participants) {
+        setRoster(data.participants);
+      }
+    } catch (e) {
+      console.error("Failed to fetch participant roster", e);
+    } finally {
+      setLoadingRoster(false);
+    }
+  };
+
+  const processScanToken = async (scannedToken: string) => {
+    if (!scannedToken.trim()) return;
+
+    setScanning(false);
+    setStatus('loading');
+    setMessage("Searching Great Hall records for token signature...");
+
+    try {
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token: scannedToken.trim(), digit: digitRef.current }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStatus('success');
+        setMessage(data.message || `Food ration approved for Counter ${digitRef.current}!`);
+        setParticipant(data.participant);
+        fetchRoster();
+      } else if (data.status === 'already_scanned') {
+        setStatus('already_scanned');
+        setMessage(data.message || 'Participant has already claimed food at this level.');
+        setParticipant(data.participant);
+      } else {
+        setStatus('error');
+        setMessage(data.error || 'Participant token not found in Hogwarts database.');
+        setParticipant(null);
+      }
+    } catch (err: any) {
+      setStatus('error');
+      setMessage(err.message || 'Failed to connect to scanner API.');
+      setParticipant(null);
+    }
+  };
+
+  // Setup HTML5 Scanner
   useEffect(() => {
     if (!isMounted || !scanning) return;
 
     let scanner: Html5QrcodeScanner | null = null;
     const timer = setTimeout(() => {
       const readerEl = document.getElementById("reader");
-      if (!readerEl) {
-        console.warn("HTML Element with id=reader not found, retrying...");
-        return;
-      }
+      if (!readerEl) return;
 
       try {
         scanner = new Html5QrcodeScanner(
           "reader",
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 },
+            qrbox: { width: 240, height: 240 },
           },
           false
         );
 
         scanner.render(
           async (decodedText) => {
-            // Immediately stop scanner and clear
             if (scanner) {
-              await scanner.clear().catch(() => { });
+              await scanner.clear().catch(() => {});
             }
-            setScanning(false);
-            setStatus('loading');
-            setMessage("Checking credentials in the Great Hall records...");
-
-            try {
-              const res = await fetch("/api/scan", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ token: decodedText, digit: digitRef.current }),
-              });
-              const data = await res.json();
-              if (res.status === 200) {
-                if (data.success) {
-                  setStatus('success');
-                  setMessage(data.message || 'Check-in approved!');
-                  setParticipant(data.participant);
-                } else if (data.status === 'already_scanned') {
-                  setStatus('already_scanned');
-                  setMessage(data.message || 'Duplicate scan warning.');
-                  setParticipant(data.participant);
-                } else {
-                  setStatus('error');
-                  setMessage(data.error || 'Failed to process check-in.');
-                  setParticipant(null);
-                }
-              } else {
-                setStatus('error');
-                setMessage(data.error || 'Check-in failed with server status.');
-                setParticipant(null);
-              }
-            } catch (err: any) {
-              setStatus('error');
-              setMessage(err.message || 'Failed to communicate with Server.');
-              setParticipant(null);
-            }
+            processScanToken(decodedText);
           },
-          (error) => {
-            // Ignore scanning errors
-          }
+          () => {}
         );
       } catch (err) {
         console.error("Failed to initialize scanner:", err);
@@ -106,7 +127,7 @@ export default function Page() {
     return () => {
       clearTimeout(timer);
       if (scanner) {
-        scanner.clear().catch(() => { });
+        scanner.clear().catch(() => {});
       }
     };
   }, [scanning, isMounted]);
@@ -115,29 +136,53 @@ export default function Page() {
     setParticipant(null);
     setMessage('');
     setStatus('idle');
+    setManualToken('');
     setScanning(true);
   };
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (manualToken) {
+      processScanToken(manualToken);
+    }
+  };
+
+  const filteredRoster = roster.filter((p) => {
+    const matchesSearch =
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.token.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.email.toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (filterCounter === 'all') return matchesSearch;
+    if (filterCounter === 'counter1') return matchesSearch && p.counter >= 1;
+    if (filterCounter === 'counter2') return matchesSearch && p.counter >= 2;
+    if (filterCounter === 'counter3') return matchesSearch && p.counter >= 3;
+    if (filterCounter === 'unclaimed') return matchesSearch && p.counter === 0;
+
+    return matchesSearch;
+  });
 
   const getStatusColor = () => {
     switch (status) {
       case 'success':
-        return 'border-emerald-500/40 bg-emerald-950/20 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.2)]';
+        return 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300 shadow-[0_0_30px_rgba(16,185,129,0.2)]';
       case 'already_scanned':
-        return 'border-amber-500/40 bg-amber-950/20 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.2)]';
+        return 'border-amber-500/40 bg-amber-950/30 text-amber-300 shadow-[0_0_30px_rgba(245,158,11,0.2)]';
       case 'error':
-        return 'border-red-500/40 bg-red-950/20 text-red-300 shadow-[0_0_20px_rgba(239,68,68,0.2)]';
+        return 'border-red-500/40 bg-red-950/30 text-red-300 shadow-[0_0_30px_rgba(239,68,68,0.2)]';
       default:
-        return 'border-amber-500/20 bg-neutral-900/40 text-neutral-300';
+        return 'border-amber-500/20 bg-neutral-900/60 text-neutral-300';
     }
   };
 
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-[#0e0e0e] text-neutral-100 font-sans flex flex-col items-center justify-center p-4">
-        <div className="text-center flex flex-col items-center gap-4">
-          <div className="animate-spin h-10 w-10 text-amber-400 border-2 border-current border-t-transparent rounded-full" />
-          <p className="text-amber-200 text-sm tracking-wider uppercase font-serif">
-            Summoning scanner module...
+      <div className="min-h-screen bg-[#07080c] text-neutral-100 font-sans flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          <p className="text-amber-200 text-xs tracking-wider uppercase font-serif">
+            Initializing Admin Camera Module...
           </p>
         </div>
       </div>
@@ -145,187 +190,336 @@ export default function Page() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e0e] text-neutral-100 font-sans flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Magic Elements */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(218,165,32,0.06),transparent_70%)] pointer-events-none" />
-      <div className="absolute top-10 left-10 w-96 h-96 bg-purple-900/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-96 h-96 bg-amber-900/5 rounded-full blur-[120px] pointer-events-none" />
-
-      {/* Embedded CSS overrides for html5-qrcode library UI components without using styled-jsx */}
+    <div className="min-h-screen bg-[#07080c] text-neutral-100 font-sans p-4 md:p-8 relative overflow-hidden">
+      {/* Embedded CSS overrides for html5-qrcode library UI components */}
       <style dangerouslySetInnerHTML={{ __html: `
-        #reader {
-          border: none !important;
-          padding: 0 !important;
-        }
+        #reader { border: none !important; padding: 0 !important; }
         #reader__dashboard_section_csr button {
           background-color: #ffd700 !important;
-          color: #131313 !important;
+          color: #07080c !important;
           border-radius: 8px !important;
-          padding: 8px 16px !important;
+          padding: 6px 14px !important;
           border: none !important;
           font-weight: bold !important;
-          font-size: 0.875rem !important;
+          font-size: 0.8rem !important;
           cursor: pointer !important;
-          transition: background-color 0.2s;
-        }
-        #reader__dashboard_section_csr button:hover {
-          background-color: #ffe16d !important;
-        }
-        #reader__dashboard_section_csr select {
-          background-color: #201f1f !important;
-          color: #e5e2e1 !important;
-          border: 1px solid rgba(255,215,0,0.3) !important;
-          border-radius: 8px !important;
-          padding: 6px 12px !important;
-          outline: none !important;
         }
         #reader__camera_permission_button {
           background-color: #ffd700 !important;
-          color: #131313 !important;
+          color: #07080c !important;
           border-radius: 8px !important;
-          padding: 10px 20px !important;
-          border: none !important;
+          padding: 8px 16px !important;
           font-weight: bold !important;
           cursor: pointer !important;
-          transition: transform 0.2s;
-        }
-        #reader__camera_permission_button:hover {
-          transform: scale(1.02);
         }
         #reader__scan_region {
-          border: 2px dashed rgba(255,215,0,0.2) !important;
+          border: 2px dashed rgba(255,215,0,0.3) !important;
           border-radius: 12px !important;
           overflow: hidden !important;
         }
-        #reader__scan_region video {
-          border-radius: 12px !important;
-        }
       ` }} />
 
-      <div className="w-full max-w-lg z-10 flex flex-col gap-6">
-        {/* Title */}
-        <div className="text-center">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-200 drop-shadow-[0_2px_8px_rgba(255,215,0,0.2)] font-serif mb-2">
-            THE GREAT HALL
-          </h1>
-          <p className="text-neutral-400 text-xs tracking-widest uppercase">
-            Food Counter Scanner
-          </p>
-        </div>
+      {/* Ambient backgrounds */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(212,175,55,0.06),transparent_70%)] pointer-events-none" />
+      <div className="absolute top-10 left-10 w-96 h-96 bg-amber-900/10 rounded-full blur-[140px] pointer-events-none" />
 
-        {/* Counter select */}
-        <div className="bg-[#1c1b1b]/80 border border-amber-500/15 rounded-2xl p-6 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
-          <h2 className="text-amber-200 text-xs font-semibold tracking-widest uppercase mb-4 text-center">
-            Active Food Counter
-          </h2>
-          <div className="grid grid-cols-3 gap-2">
-            {[1, 2, 3].map((num) => (
-              <button
-                key={num}
-                onClick={() => setDigit(num)}
-                className={`py-3 rounded-xl border text-lg font-bold transition-all duration-300 ${digit === num
-                    ? "bg-gradient-to-r from-amber-500 to-yellow-600 border-amber-400 text-neutral-950 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
-                    : "bg-[#131313] border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200"
-                  }`}
-              >
-                {num}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Scanner Panel */}
-        <div className="bg-[#1c1b1b]/80 border border-amber-500/15 rounded-2xl p-6 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.5)] min-h-[360px] flex flex-col justify-center items-center relative overflow-hidden">
-          
-          {/* Scanner View: Always mounted to avoid mount delay race conditions, toggled via display classes */}
-          <div className={`w-full flex flex-col items-center gap-4 ${scanning ? "flex" : "hidden"}`}>
-            <div className="text-neutral-300 text-sm font-medium tracking-wide">
-              Hold QR code inside the frame
+      <div className="max-w-6xl mx-auto z-10 relative flex flex-col gap-8">
+        
+        {/* Navigation & Header */}
+        <header className="liquid-glass-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-mono tracking-wider bg-amber-500/10 border border-amber-400/30 text-amber-300">
+                Official Overseer Station
+              </span>
             </div>
-            <div
-              id="reader"
-              className="w-full max-w-[360px] overflow-hidden rounded-2xl border border-neutral-800 bg-[#131313]"
-            ></div>
+            <h1 className="text-3xl font-bold font-serif gold-spell-text mt-1">
+              THE GREAT HALL ADMIN SCANNER
+            </h1>
+            <p className="text-xs text-neutral-400 font-mono mt-0.5">
+              Scan participant QR codes or enter manual tokens to issue food rations.
+            </p>
           </div>
 
-          <AnimatePresence mode="wait">
-            {!scanning && (
-              <motion.div
-                key="result-view"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className={`w-full border rounded-2xl p-6 flex flex-col items-center gap-6 text-center ${getStatusColor()}`}
-              >
-                {/* Result Indicator Icon */}
-                <div className="w-16 h-16 rounded-full flex items-center justify-center border-2 border-current bg-neutral-950/40 shadow-inner">
-                  {status === 'loading' && (
-                    <svg className="animate-spin h-8 w-8" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                  )}
-                  {status === 'success' && (
-                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                  {status === 'already_scanned' && (
-                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                  )}
-                  {status === 'error' && (
-                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  )}
-                </div>
+          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+            <Link
+              href="/dashboard"
+              className="py-2 px-3.5 rounded-xl border border-amber-500/20 bg-neutral-900/40 hover:bg-neutral-800/60 text-amber-200 text-xs font-mono transition-all"
+            >
+              User Dashboard &rarr;
+            </Link>
+          </div>
+        </header>
 
-                {/* Main feedback text */}
-                <div>
-                  <h3 className="text-2xl font-bold tracking-wide uppercase mb-1">
-                    {status === 'loading' && 'Verifying...'}
-                    {status === 'success' && 'Access Approved'}
-                    {status === 'already_scanned' && 'Duplicate Scan'}
-                    {status === 'error' && 'Access Denied'}
-                  </h3>
-                  <p className="text-sm opacity-90 font-medium px-4">{message}</p>
-                </div>
+        {/* Top Grid: Counter Selector & Scanner Panel */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* Active Food Counter Selector & Manual Entry (5 cols) */}
+          <div className="lg:col-span-5 flex flex-col gap-6">
+            
+            {/* Active Counter Box */}
+            <div className="liquid-glass-card p-6 flex flex-col gap-4">
+              <div className="flex justify-between items-center border-b border-amber-500/15 pb-3">
+                <h2 className="text-sm font-semibold uppercase tracking-widest text-amber-300 font-mono">
+                  1. Select Active Food Counter
+                </h2>
+                <span className="text-xs text-amber-400 font-mono font-bold">
+                  Active: Counter {digit}
+                </span>
+              </div>
 
-                {/* Participant Details Card */}
-                {participant && (
-                  <div className="w-full bg-neutral-950/60 rounded-xl p-4 border border-white/5 text-left flex flex-col gap-2.5 shadow-md">
-                    <div className="flex justify-between border-b border-white/5 pb-2">
-                      <span className="text-xs text-neutral-400 uppercase tracking-widest">Participant</span>
-                      <span className="text-sm font-semibold text-neutral-200">{participant.name}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/5 pb-2">
-                      <span className="text-xs text-neutral-400 uppercase tracking-widest">Team</span>
-                      <span className="text-sm font-semibold text-neutral-200">{participant.team}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-400 uppercase tracking-widest">Food Counter Status</span>
-                      <span className="text-sm font-semibold text-amber-300">
-                        {participant.counter === digit ? `Updated to Counter ${digit}` : `Last eaten: Counter ${participant.counter}`}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Clear/Next Button */}
-                {status !== 'loading' && (
+              <div className="grid grid-cols-3 gap-3">
+                {[1, 2, 3].map((num) => (
                   <button
-                    onClick={handleNextScan}
-                    className="w-full py-3 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-neutral-950 rounded-xl font-bold transition-all duration-300 shadow-[0_4px_15px_rgba(245,158,11,0.2)] hover:scale-[1.01]"
+                    key={num}
+                    onClick={() => setDigit(num)}
+                    className={`py-3.5 rounded-xl border text-sm font-bold transition-all duration-300 flex flex-col items-center gap-1 cursor-pointer ${
+                      digit === num
+                        ? "bg-gradient-to-r from-amber-500 to-yellow-600 border-amber-400 text-neutral-950 shadow-[0_0_20px_rgba(245,158,11,0.35)] scale-[1.02]"
+                        : "bg-neutral-900/50 border-neutral-800 text-neutral-400 hover:border-amber-500/30 hover:text-neutral-200"
+                    }`}
                   >
-                    Scan Next Participant
+                    <span className="text-xs uppercase opacity-80">Counter</span>
+                    <span className="text-xl font-extrabold">{num}</span>
                   </button>
+                ))}
+              </div>
+
+              <p className="text-[11px] text-neutral-400 text-center mt-1">
+                Scans will update the participant's ration counter to Level {digit}.
+              </p>
+            </div>
+
+            {/* Manual Token Entry Box */}
+            <div className="liquid-glass-card p-6 flex flex-col gap-4">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-amber-300 font-mono border-b border-amber-500/15 pb-3">
+                2. Manual Token / Email Entry
+              </h2>
+
+              <form onSubmit={handleManualSubmit} className="flex flex-col gap-3">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={manualToken}
+                    onChange={(e) => setManualToken(e.target.value)}
+                    placeholder="Enter Token (e.g. SammyK. or HP-GRYFF-101)"
+                    className="liquid-input text-xs font-mono flex-1"
+                  />
+                  <button
+                    type="submit"
+                    className="py-2.5 px-4 rounded-xl magical-btn text-xs font-bold uppercase transition-all shadow-[0_2px_10px_rgba(255,215,0,0.2)]"
+                  >
+                    Verify
+                  </button>
+                </div>
+                <span className="text-[10px] text-neutral-400">
+                  Use this if participant QR code is on a separate screen or camera is disabled.
+                </span>
+              </form>
+            </div>
+
+          </div>
+
+          {/* Scanner View & Live Feedback Card (7 cols) */}
+          <div className="lg:col-span-7">
+            <div className="liquid-glass-card p-6 md:p-8 min-h-[380px] flex flex-col justify-center items-center relative overflow-hidden">
+              
+              {/* Camera Scanner View */}
+              <div className={`w-full flex flex-col items-center gap-4 ${scanning ? "flex" : "hidden"}`}>
+                <div className="text-neutral-300 text-xs uppercase font-mono tracking-widest text-center">
+                  Align Participant QR Code within Frame
+                </div>
+                
+                <div
+                  id="reader"
+                  className="w-full max-w-[340px] overflow-hidden rounded-2xl border border-amber-500/20 bg-[#07080c]"
+                />
+
+                <span className="text-[10px] text-amber-300/60 font-mono">
+                  Camera feed active • Listening for QR signal
+                </span>
+              </div>
+
+              {/* Result View Overlay */}
+              <AnimatePresence mode="wait">
+                {!scanning && (
+                  <motion.div
+                    key="result-view"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className={`w-full border rounded-2xl p-6 flex flex-col items-center gap-6 text-center ${getStatusColor()}`}
+                  >
+                    {/* Status Indicator Icon */}
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center border-2 border-current bg-neutral-950/60 shadow-inner">
+                      {status === 'loading' && (
+                        <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      )}
+                      {status === 'success' && (
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                      {status === 'already_scanned' && (
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      )}
+                      {status === 'error' && (
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                    </div>
+
+                    {/* Feedback header */}
+                    <div>
+                      <h3 className="text-xl font-bold font-serif uppercase tracking-wider mb-1">
+                        {status === 'loading' && 'Checking Hogwarts Registry...'}
+                        {status === 'success' && 'Food Ration Approved'}
+                        {status === 'already_scanned' && 'Duplicate Scan Warning'}
+                        {status === 'error' && 'Verification Failed'}
+                      </h3>
+                      <p className="text-xs opacity-90 font-medium px-4">{message}</p>
+                    </div>
+
+                    {/* Participant Details Card */}
+                    {participant && (
+                      <div className="w-full bg-neutral-950/70 rounded-xl p-4 border border-white/10 text-left flex flex-col gap-2 shadow-md">
+                        <div className="flex justify-between border-b border-white/5 pb-2">
+                          <span className="text-[10px] text-neutral-400 uppercase tracking-widest">Participant</span>
+                          <span className="text-xs font-semibold text-neutral-200">{participant.name}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-white/5 pb-2">
+                          <span className="text-[10px] text-neutral-400 uppercase tracking-widest">Team</span>
+                          <span className="text-xs font-semibold text-neutral-200">{participant.team}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[10px] text-neutral-400 uppercase tracking-widest">Updated Food Counter</span>
+                          <span className="text-xs font-bold text-amber-300 font-mono">
+                            Counter {participant.counter} / 3
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reset Button */}
+                    {status !== 'loading' && (
+                      <button
+                        onClick={handleNextScan}
+                        className="w-full py-3 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-neutral-950 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-[0_4px_15px_rgba(245,158,11,0.25)] cursor-pointer"
+                      >
+                        Scan Next Participant
+                      </button>
+                    )}
+                  </motion.div>
                 )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </AnimatePresence>
+
+            </div>
+          </div>
+
         </div>
+
+        {/* Bottom Section: Live Roster & Food Audit Table */}
+        <div className="liquid-glass-card p-6 md:p-8 flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-500/15 pb-4">
+            <div>
+              <h2 className="text-xl font-serif font-bold gold-spell-text">
+                Live Participant Food Audit Directory
+              </h2>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                Real-time tracking of food claims across all registered participants in MongoDB.
+              </p>
+            </div>
+
+            {/* Search & Filter Controls */}
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search name, team, token..."
+                className="liquid-input text-xs font-mono py-2 px-3 w-48"
+              />
+
+              <select
+                value={filterCounter}
+                onChange={(e) => setFilterCounter(e.target.value)}
+                className="liquid-input text-xs font-mono py-2 px-3 bg-neutral-900"
+              >
+                <option value="all">All Rations</option>
+                <option value="unclaimed">Unclaimed (0)</option>
+                <option value="counter1">Counter 1+ Claimed</option>
+                <option value="counter2">Counter 2+ Claimed</option>
+                <option value="counter3">Counter 3 Claimed</option>
+              </select>
+
+              <button
+                onClick={fetchRoster}
+                className="py-2 px-3 rounded-lg border border-amber-500/20 bg-neutral-900 text-amber-300 text-xs font-mono hover:bg-neutral-800"
+              >
+                {loadingRoster ? "Refreshing..." : "Refresh List"}
+              </button>
+            </div>
+          </div>
+
+          {/* Roster Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-neutral-300">
+              <thead className="bg-neutral-900/60 text-amber-300 font-mono uppercase text-[10px] tracking-wider border-b border-amber-500/15">
+                <tr>
+                  <th className="py-3 px-4">Participant</th>
+                  <th className="py-3 px-4">Team</th>
+                  <th className="py-3 px-4">Secret Token</th>
+                  <th className="py-3 px-4">Counter Status</th>
+                  <th className="py-3 px-4 text-right">Direct Claim Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filteredRoster.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-neutral-500">
+                      No participants match the specified filter query.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRoster.map((p) => (
+                    <tr key={p.token} className="hover:bg-amber-500/5 transition-colors">
+                      <td className="py-3.5 px-4 font-semibold text-neutral-100">
+                        <div>{p.name}</div>
+                        <div className="text-[10px] text-neutral-400 font-mono">{p.email}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-amber-200/80">{p.team}</td>
+                      <td className="py-3.5 px-4 font-mono text-amber-300">{p.token}</td>
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold font-mono ${
+                          p.counter >= digit
+                            ? "bg-emerald-500/15 border border-emerald-400/30 text-emerald-300"
+                            : p.counter > 0
+                            ? "bg-amber-500/15 border border-amber-400/30 text-amber-300"
+                            : "bg-neutral-800 border border-neutral-700 text-neutral-400"
+                        }`}>
+                          Counter Status: Level {p.counter} / 3
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          onClick={() => processScanToken(p.token)}
+                          className="py-1.5 px-3 rounded-lg border border-amber-400/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-mono text-[11px] transition-all cursor-pointer"
+                        >
+                          Claim Counter {digit}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
       </div>
     </div>
   );

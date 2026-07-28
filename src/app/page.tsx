@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import WandCursor from "./components/wandCursor";
 import Countdown from "./components/countdown";
@@ -184,16 +185,15 @@ function Page() {
                 </div>
               </motion.div>
 
-              {/* Golden Register Button with high click priority */}
-              <motion.div variants={itemVariants} className="relative z-50">
+              {/* Golden Register & Dashboard Buttons with high click priority */}
+              <motion.div variants={itemVariants} className="relative z-50 flex flex-wrap items-center justify-center md:justify-start gap-4">
                 <button
                   onClick={() => setShowRegistrationModal(true)}
-                  className="magical-btn px-10 py-5 rounded-full sm:text-lg text-md tracking-widest flex items-center gap-2 group"
+                  className="magical-btn px-8 py-4 rounded-full sm:text-base text-sm tracking-widest flex items-center gap-2 group cursor-pointer"
                 >
                   <span>✦ REGISTER NOW ✦</span>
-
                   <svg
-                    className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-2"
+                    className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-2"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -206,6 +206,27 @@ function Page() {
                     />
                   </svg>
                 </button>
+
+                <Link
+                  href="/login"
+                  className="px-6 py-4 rounded-full border border-amber-400/40 bg-neutral-900/60 backdrop-blur-md hover:bg-neutral-900 hover:border-amber-400 text-amber-300 text-xs sm:text-sm font-bold tracking-widest uppercase transition-all shadow-[0_0_15px_rgba(255,215,0,0.15)] flex items-center gap-2"
+                >
+                  <span>Great Hall Login</span>
+                </Link>
+
+                <Link
+                  href="/dashboard"
+                  className="px-6 py-4 rounded-full border border-amber-500/20 bg-black/40 backdrop-blur-md hover:border-amber-400/40 text-neutral-300 text-xs sm:text-sm font-semibold tracking-widest uppercase transition-all flex items-center gap-2"
+                >
+                  <span>Dashboard</span>
+                </Link>
+
+                <Link
+                  href="/admin"
+                  className="px-6 py-4 rounded-full border border-amber-500/20 bg-black/40 backdrop-blur-md hover:border-amber-400/40 text-neutral-300 text-xs sm:text-sm font-semibold tracking-widest uppercase transition-all flex items-center gap-2"
+                >
+                  <span>Admin Scanner</span>
+                </Link>
               </motion.div>
             </motion.div>
           </section>
