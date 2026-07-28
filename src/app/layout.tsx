@@ -9,8 +9,8 @@ export const metadata: Metadata = {
   },
   description: "Assemble your house of wizards and showcase technical brilliance in Inceptia 2K26, a 24-hour national level hackathon at PCCOER, Pune.",
   keywords: [
-    "Inceptia", "Inceptia 2026", "Inceptia 2K26", "Hackathon", "Pune Hackathon",
-    "PCCOER", "National Hackathon", "Coding Competition", "Wizards Theme",
+    "Inceptia", "Inceptia 2026", "Inceptia 2K26", "Hackathon", "Pune Hackathon", 
+    "PCCOER", "National Hackathon", "Coding Competition", "Wizards Theme", 
     "AI ML", "Web3", "Blockchain", "Healthcare Hackathon", "Open Innovation"
   ],
   authors: [{ name: "Inceptia Dev Team" }],
