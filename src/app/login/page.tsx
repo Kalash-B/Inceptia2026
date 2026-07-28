@@ -36,8 +36,10 @@ export default function LoginPage() {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        // Save participant data to client storage for dashboard access
-        localStorage.setItem("hogwarts_user", JSON.stringify(data.participant));
+        // Save participant data to client storage & session cookie for dashboard proxy protection
+        const sessionVal = JSON.stringify(data.participant);
+        localStorage.setItem("hogwarts_user", sessionVal);
+        document.cookie = `hogwarts_session=${encodeURIComponent(sessionVal)}; path=/; max-age=86400; SameSite=Lax`;
         router.push("/dashboard");
       } else {
         setErrorMsg(data.error || "Authentication failed. Verify your passphrase.");

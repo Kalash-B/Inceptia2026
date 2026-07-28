@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import Link from "next/link";
 
 interface Participant {
   name: string;
@@ -16,9 +15,9 @@ interface Participant {
 }
 
 const MEALS = [
-  { digit: 1, name: "Breakfast Feast" },
-  { digit: 2, name: "Lunch Banquet" },
-  { digit: 3, name: "Dinner Gala" },
+  { digit: 1, name: "Lunch [Day 1]" },
+  { digit: 2, name: "Dinner [Day 1]" },
+  { digit: 3, name: "Lunch [Day 2]" },
 ];
 
 const AVATAR_LIST = [
@@ -29,6 +28,16 @@ const AVATAR_LIST = [
   "/profiles_char/snape.png",
   "/profiles_char/voldemort.png",
 ];
+
+const RED_CHARACTERS = ["harry", "hermoine", "hermione", "ron"];
+
+function isRedThemeCharacter(avatarPath: string, name?: string): boolean {
+  const avatarLower = (avatarPath || "").toLowerCase();
+  const nameLower = (name || "").toLowerCase();
+  return RED_CHARACTERS.some(
+    (char) => avatarLower.includes(char) || nameLower.includes(char)
+  );
+}
 
 function getParticipantAvatar(participant: Participant): string {
   if (participant.avatar && participant.avatar.trim().length > 0) {
@@ -42,6 +51,8 @@ function getParticipantAvatar(participant: Participant): string {
   const index = Math.abs(hash) % AVATAR_LIST.length;
   return AVATAR_LIST[index];
 }
+
+
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -74,23 +85,14 @@ export default function DashboardPage() {
   useEffect(() => {
     const cachedUserStr = localStorage.getItem("hogwarts_user");
     if (!cachedUserStr) {
-      const fallbackUser: Participant = {
-        name: "Samarth Kapse",
-        team: "Kremlin Spies",
-        email: "kazbrekker898@gmail.com",
-        token: "SammyK.",
-        counter: 0,
-        avatar: "/profiles_char/harry.png",
-      };
-      setParticipant(fallbackUser);
-      generateQR(fallbackUser.token);
-      setLoading(false);
+      router.push("/login");
       return;
     }
 
     try {
       const parsed = JSON.parse(cachedUserStr) as Participant;
       setParticipant(parsed);
+      document.cookie = `hogwarts_session=${encodeURIComponent(cachedUserStr)}; path=/; max-age=86400; SameSite=Lax`;
       generateQR(parsed.token);
       fetchLatestParticipant(parsed.email, parsed.token);
     } catch (e) {
@@ -123,6 +125,9 @@ export default function DashboardPage() {
 
   const handleLogout = () => {
     localStorage.removeItem("hogwarts_user");
+    document.cookie = "hogwarts_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+    document.cookie = "hogwarts_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+    document.cookie = "currentUser=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
     router.push("/login");
   };
 
@@ -135,19 +140,116 @@ export default function DashboardPage() {
   }
 
   const avatarSrc = getParticipantAvatar(participant);
+  const isRed = isRedThemeCharacter(avatarSrc, participant.name);
 
   return (
-    <div className="h-screen w-full bg-[#07080c] text-neutral-100 font-sans p-4 md:p-8 flex flex-col justify-between overflow-hidden relative selection:bg-amber-400 selection:text-neutral-950">
-      {/* Golden Obsidian Background Glows */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(212,175,55,0.08),transparent_65%)] pointer-events-none" />
-      <div className="absolute top-10 right-10 w-96 h-96 bg-amber-900/10 rounded-full blur-[140px] pointer-events-none" />
+    <div className={`h-screen w-full ${isRed ? "bg-[#2b0408]" : "bg-[#041a10]"} text-neutral-100 font-sans p-4 md:p-8 flex flex-col justify-between overflow-hidden relative selection:bg-amber-400 selection:text-neutral-950 transition-colors duration-700`}>
+      <div className={`absolute inset-0 transition-colors duration-700 pointer-events-none ${isRed ? "bg-[#2b0408]" : "bg-[#041a10]"}`} />
+
+      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-45 mix-blend-overlay">
+        <filter id="natural-paper-grain">
+          <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="5" stitchTiles="stitch" result="pulp" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#natural-paper-grain)" />
+      </svg>
+
+      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-60 mix-blend-multiply">
+        <filter id="black-charcoal-stipple">
+          <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="4" stitchTiles="stitch" />
+          <feColorMatrix type="matrix" values="
+            0 0 0 0 0
+            0 0 0 0 0
+            0 0 0 0 0
+            0 0 0 10 -3.5" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#black-charcoal-stipple)" fill="#000000" />
+      </svg>
+
+      {/* Natural Handmade Paper Flecks Layer */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-25 mix-blend-soft-light">
+        <filter id="paper-fibres">
+          <feTurbulence type="turbulence" baseFrequency="0.25 0.75" numOctaves="4" stitchTiles="stitch" result="fibres" />
+          <feColorMatrix type="matrix" values="
+            1 0 0 0 0
+            0 1 0 0 0
+            0 0 1 0 0
+            0 0 0 5 -2" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#paper-fibres)" fill={isRed ? "#ff8899" : "#88ffcc"} />
+      </svg>
+
+      {/* Deep Black Paper Edge Frame (Shades of Black Vignette) */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.60)_70%,rgba(0,0,0,0.92)_100%)] pointer-events-none z-0" />
+
+      {/* 3 Ultra-Massive Screen-Covering Theme Glowing Orbs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        {/* Massive Orb 1: Primary Full-Screen Theme Atmosphere */}
+        <motion.div
+          animate={{
+            x: ["-20vw", "40vw", "-10vw", "50vw", "-20vw"],
+            y: ["-20vh", "30vh", "50vh", "-5vh", "-20vh"],
+            scale: [1, 1.25, 0.95, 1.2, 1],
+            rotate: [0, 180, 360],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className={`absolute w-[100vw] h-[100vw] max-w-[1350px] max-h-[1350px] rounded-full blur-[160px] opacity-60 mix-blend-screen ${isRed
+            ? "bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.85)_0%,rgba(185,28,28,0.5)_50%,rgba(127,29,29,0.2)_75%,transparent_100%)] shadow-[0_0_250px_rgba(239,68,68,0.6)]"
+            : "bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.85)_0%,rgba(5,150,105,0.5)_50%,rgba(4,120,87,0.2)_75%,transparent_100%)] shadow-[0_0_250px_rgba(16,185,129,0.6)]"
+            }`}
+        />
+
+        {/* Massive Orb 2: Counter Full-Screen Deep Atmosphere */}
+        <motion.div
+          animate={{
+            x: ["60vw", "-15vw", "45vw", "-25vw", "60vw"],
+            y: ["45vh", "-10vh", "-20vh", "35vh", "45vh"],
+            scale: [1.15, 0.9, 1.3, 0.95, 1.15],
+            rotate: [360, 180, 0],
+          }}
+          transition={{
+            duration: 30,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 3,
+          }}
+          className={`absolute w-[110vw] h-[110vw] max-w-[1450px] max-h-[1450px] rounded-full blur-[180px] opacity-55 mix-blend-screen ${isRed
+            ? "bg-[radial-gradient(circle_at_center,rgba(225,29,72,0.75)_0%,rgba(153,27,27,0.45)_50%,rgba(88,28,28,0.18)_75%,transparent_100%)] shadow-[0_0_220px_rgba(225,29,72,0.55)]"
+            : "bg-[radial-gradient(circle_at_center,rgba(20,184,166,0.75)_0%,rgba(13,148,136,0.45)_50%,rgba(15,118,110,0.18)_75%,transparent_100%)] shadow-[0_0_220px_rgba(20,184,166,0.55)]"
+            }`}
+        />
+
+        {/* Massive Orb 3: Full-Screen Glow Wash */}
+        <motion.div
+          animate={{
+            x: ["10vw", "65vw", "-20vw", "25vw", "10vw"],
+            y: ["65vh", "-25vh", "20vh", "60vh", "65vh"],
+            scale: [0.95, 1.35, 0.9, 1.15, 0.95],
+            rotate: [0, -180, -360],
+          }}
+          transition={{
+            duration: 22,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 5,
+          }}
+          className={`absolute w-[90vw] h-[90vw] max-w-[1250px] max-h-[1250px] rounded-full blur-[150px] opacity-55 mix-blend-screen ${isRed
+            ? "bg-[radial-gradient(circle_at_center,rgba(244,63,94,0.7)_0%,rgba(190,18,60,0.4)_50%,rgba(136,19,55,0.15)_75%,transparent_100%)] shadow-[0_0_200px_rgba(244,63,94,0.5)]"
+            : "bg-[radial-gradient(circle_at_center,rgba(52,211,153,0.7)_0%,rgba(6,78,59,0.4)_50%,rgba(2,44,34,0.15)_70%,transparent_100%)] shadow-[0_0_200px_rgba(52,211,153,0.5)]"
+            }`}
+        />
+      </div>
 
       {/* Top Header Bar */}
       <header className="flex justify-between items-center z-20 shrink-0 max-w-6xl mx-auto w-full px-2">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_10px_#ffd700]" />
+          <span className={`w-2.5 h-2.5 rounded-full ${isRed ? "bg-red-400 shadow-[0_0_10px_#ef4444]" : "bg-emerald-400 shadow-[0_0_10px_#10b981]"} animate-pulse`} />
           <span className="text-xs font-serif font-bold uppercase tracking-widest text-amber-300/80">
-            Hogwarts Great Hall Registry
+            User Dashboard
           </span>
         </div>
 
@@ -163,12 +265,6 @@ export default function DashboardPage() {
             <span>Sync</span>
           </button>
 
-          <Link
-            href="/admin"
-            className="px-3 py-1.5 rounded-xl border border-amber-400/40 bg-amber-500/10 text-amber-300 text-xs font-mono hover:bg-amber-500/20 transition-all"
-          >
-            Admin Station
-          </Link>
 
           <button
             onClick={handleLogout}
@@ -191,13 +287,13 @@ export default function DashboardPage() {
           className="lg:col-span-6 liquid-glass-card p-6 md:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6 relative overflow-hidden"
         >
           {/* Circular Harry Potter Character Profile Photo Container (Left inside Section 1) */}
-          <div className="w-32 h-32 shrink-0 rounded-full border-2 border-amber-400/90 bg-[#07080c] shadow-[0_0_25px_rgba(255,215,0,0.3)] flex items-center justify-center p-1 relative group my-auto">
+          <div className={`w-32 h-32 shrink-0 rounded-full border-2 ${isRed ? "border-red-500/90 shadow-[0_0_25px_rgba(239,68,68,0.35)]" : "border-emerald-500/90 shadow-[0_0_25px_rgba(16,185,129,0.35)]"} bg-[#07080c] flex items-center justify-center p-1 relative group my-auto transition-all duration-500`}>
             <img
               src={avatarSrc}
               alt={participant.name}
-              className="w-full h-full rounded-full object-cover object-center border border-amber-400/40 shadow-inner group-hover:scale-105 transition-transform duration-300"
+              className={`w-full h-full rounded-full object-cover object-center border ${isRed ? "border-red-400/40" : "border-emerald-400/40"} shadow-inner group-hover:scale-105 transition-transform duration-300`}
             />
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-yellow-500 text-neutral-950 font-mono font-extrabold text-[9px] uppercase px-3 py-0.5 rounded-full shadow z-10 whitespace-nowrap">
+            <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gradient-to-r ${isRed ? "from-red-600 to-rose-700" : "from-emerald-600 to-teal-700"} text-white font-mono font-extrabold text-[9px] uppercase px-3 py-0.5 rounded-full shadow z-10 whitespace-nowrap`}>
               LEAD
             </div>
           </div>
@@ -233,7 +329,9 @@ export default function DashboardPage() {
 
               <div>
                 <span className="text-neutral-400">House Assignment:</span>{" "}
-                <span className="text-amber-300 font-semibold">Gryffindor Elite</span>
+                <span className={isRed ? "text-red-400 font-semibold" : "text-emerald-400 font-semibold"}>
+                  {isRed ? "Gryffindor Elite" : "Slytherin House"}
+                </span>
               </div>
             </div>
           </div>
@@ -308,8 +406,8 @@ export default function DashboardPage() {
                       </span>
                       <span
                         className={`w-3 h-3 rounded-full transition-all ${isClaimed
-                            ? "bg-emerald-400 shadow-[0_0_8px_#10b981]"
-                            : "bg-neutral-600"
+                          ? "bg-emerald-400 shadow-[0_0_8px_#10b981]"
+                          : "bg-neutral-600"
                           }`}
                         title={isClaimed ? "Claimed" : "Unclaimed"}
                       />
@@ -324,10 +422,8 @@ export default function DashboardPage() {
 
       </main>
 
-      {/* Minimal Footer */}
-      <footer className="text-[10px] text-neutral-400/60 text-center font-mono py-0.5 shrink-0 z-10">
-        Inceptia Great Hall Portal • Harry Potter Character Avatar Edition
-      </footer>
+
+
     </div>
   );
 }
