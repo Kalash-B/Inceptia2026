@@ -207,26 +207,7 @@ function Page() {
                   </svg>
                 </button>
 
-                <Link
-                  href="/login"
-                  className="px-6 py-4 rounded-full border border-amber-400/40 bg-neutral-900/60 backdrop-blur-md hover:bg-neutral-900 hover:border-amber-400 text-amber-300 text-xs sm:text-sm font-bold tracking-widest uppercase transition-all shadow-[0_0_15px_rgba(255,215,0,0.15)] flex items-center gap-2"
-                >
-                  <span>Great Hall Login</span>
-                </Link>
 
-                <Link
-                  href="/dashboard"
-                  className="px-6 py-4 rounded-full border border-amber-500/20 bg-black/40 backdrop-blur-md hover:border-amber-400/40 text-neutral-300 text-xs sm:text-sm font-semibold tracking-widest uppercase transition-all flex items-center gap-2"
-                >
-                  <span>Dashboard</span>
-                </Link>
-
-                <Link
-                  href="/admin"
-                  className="px-6 py-4 rounded-full border border-amber-500/20 bg-black/40 backdrop-blur-md hover:border-amber-400/40 text-neutral-300 text-xs sm:text-sm font-semibold tracking-widest uppercase transition-all flex items-center gap-2"
-                >
-                  <span>Admin Scanner</span>
-                </Link>
               </motion.div>
             </motion.div>
           </section>

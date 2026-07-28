@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import Image from "next/image";
+import MagicalClouds from "../components/magicalClouds";
 
 interface Participant {
   name: string;
@@ -143,106 +145,30 @@ export default function DashboardPage() {
   const isRed = isRedThemeCharacter(avatarSrc, participant.name);
 
   return (
-    <div className={`h-screen w-full ${isRed ? "bg-[#2b0408]" : "bg-[#041a10]"} text-neutral-100 font-sans p-4 md:p-8 flex flex-col justify-between overflow-hidden relative selection:bg-amber-400 selection:text-neutral-950 transition-colors duration-700`}>
-      <div className={`absolute inset-0 transition-colors duration-700 pointer-events-none ${isRed ? "bg-[#2b0408]" : "bg-[#041a10]"}`} />
+    <div className="h-screen w-full bg-[#0e0e0e] text-neutral-100 font-sans p-4 md:p-8 flex flex-col justify-between overflow-hidden relative selection:bg-amber-400 selection:text-neutral-950 transition-colors duration-700">
+      {/* Hogwarts Castle Background Image matching Hero page */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <Image
+          src="/hero-bg.webp"
+          alt="Hogwarts Castle"
+          fill
+          priority
+          className="object-cover object-top opacity-50"
+        />
+        <div className={`absolute inset-0 transition-colors duration-700 ${isRed ? "bg-gradient-to-b from-red-950/40 via-black/75 to-[#0e0e0e]" : "bg-gradient-to-b from-emerald-950/40 via-black/75 to-[#0e0e0e]"}`} />
+      </div>
 
-      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-45 mix-blend-overlay">
-        <filter id="natural-paper-grain">
-          <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="5" stitchTiles="stitch" result="pulp" />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#natural-paper-grain)" />
-      </svg>
+      {/* Floating Lumos Golden Sparkles Canvas */}
+      <MagicalClouds />
 
-      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-60 mix-blend-multiply">
-        <filter id="black-charcoal-stipple">
-          <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="4" stitchTiles="stitch" />
-          <feColorMatrix type="matrix" values="
-            0 0 0 0 0
-            0 0 0 0 0
-            0 0 0 0 0
-            0 0 0 10 -3.5" />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#black-charcoal-stipple)" fill="#000000" />
-      </svg>
-
-      {/* Natural Handmade Paper Flecks Layer */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-25 mix-blend-soft-light">
-        <filter id="paper-fibres">
-          <feTurbulence type="turbulence" baseFrequency="0.25 0.75" numOctaves="4" stitchTiles="stitch" result="fibres" />
-          <feColorMatrix type="matrix" values="
-            1 0 0 0 0
-            0 1 0 0 0
-            0 0 1 0 0
-            0 0 0 5 -2" />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#paper-fibres)" fill={isRed ? "#ff8899" : "#88ffcc"} />
-      </svg>
-
-      {/* Deep Black Paper Edge Frame (Shades of Black Vignette) */}
+      {/* Deep Black Edge Frame (Vignette) */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.60)_70%,rgba(0,0,0,0.92)_100%)] pointer-events-none z-0" />
 
-      {/* 3 Ultra-Massive Screen-Covering Theme Glowing Orbs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        {/* Massive Orb 1: Primary Full-Screen Theme Atmosphere */}
-        <motion.div
-          animate={{
-            x: ["-20vw", "40vw", "-10vw", "50vw", "-20vw"],
-            y: ["-20vh", "30vh", "50vh", "-5vh", "-20vh"],
-            scale: [1, 1.25, 0.95, 1.2, 1],
-            rotate: [0, 180, 360],
-          }}
-          transition={{
-            duration: 25,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className={`absolute w-[100vw] h-[100vw] max-w-[1350px] max-h-[1350px] rounded-full blur-[160px] opacity-60 mix-blend-screen ${isRed
-            ? "bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.85)_0%,rgba(185,28,28,0.5)_50%,rgba(127,29,29,0.2)_75%,transparent_100%)] shadow-[0_0_250px_rgba(239,68,68,0.6)]"
-            : "bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.85)_0%,rgba(5,150,105,0.5)_50%,rgba(4,120,87,0.2)_75%,transparent_100%)] shadow-[0_0_250px_rgba(16,185,129,0.6)]"
-            }`}
-        />
-
-        {/* Massive Orb 2: Counter Full-Screen Deep Atmosphere */}
-        <motion.div
-          animate={{
-            x: ["60vw", "-15vw", "45vw", "-25vw", "60vw"],
-            y: ["45vh", "-10vh", "-20vh", "35vh", "45vh"],
-            scale: [1.15, 0.9, 1.3, 0.95, 1.15],
-            rotate: [360, 180, 0],
-          }}
-          transition={{
-            duration: 30,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 3,
-          }}
-          className={`absolute w-[110vw] h-[110vw] max-w-[1450px] max-h-[1450px] rounded-full blur-[180px] opacity-55 mix-blend-screen ${isRed
-            ? "bg-[radial-gradient(circle_at_center,rgba(225,29,72,0.75)_0%,rgba(153,27,27,0.45)_50%,rgba(88,28,28,0.18)_75%,transparent_100%)] shadow-[0_0_220px_rgba(225,29,72,0.55)]"
-            : "bg-[radial-gradient(circle_at_center,rgba(20,184,166,0.75)_0%,rgba(13,148,136,0.45)_50%,rgba(15,118,110,0.18)_75%,transparent_100%)] shadow-[0_0_220px_rgba(20,184,166,0.55)]"
-            }`}
-        />
-
-        {/* Massive Orb 3: Full-Screen Glow Wash */}
-        <motion.div
-          animate={{
-            x: ["10vw", "65vw", "-20vw", "25vw", "10vw"],
-            y: ["65vh", "-25vh", "20vh", "60vh", "65vh"],
-            scale: [0.95, 1.35, 0.9, 1.15, 0.95],
-            rotate: [0, -180, -360],
-          }}
-          transition={{
-            duration: 22,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 5,
-          }}
-          className={`absolute w-[90vw] h-[90vw] max-w-[1250px] max-h-[1250px] rounded-full blur-[150px] opacity-55 mix-blend-screen ${isRed
-            ? "bg-[radial-gradient(circle_at_center,rgba(244,63,94,0.7)_0%,rgba(190,18,60,0.4)_50%,rgba(136,19,55,0.15)_75%,transparent_100%)] shadow-[0_0_200px_rgba(244,63,94,0.5)]"
-            : "bg-[radial-gradient(circle_at_center,rgba(52,211,153,0.7)_0%,rgba(6,78,59,0.4)_50%,rgba(2,44,34,0.15)_70%,transparent_100%)] shadow-[0_0_200px_rgba(52,211,153,0.5)]"
-            }`}
-        />
-      </div>
+      {/* Minimal Domain-Style Ambient Theme Tint Layer (No Moving Orbs) */}
+      <div className={`absolute inset-0 pointer-events-none z-0 transition-all duration-700 ${isRed
+          ? "bg-[radial-gradient(circle_at_50%_30%,rgba(239,68,68,0.18)_0%,rgba(185,28,28,0.06)_50%,transparent_75%)]"
+          : "bg-[radial-gradient(circle_at_50%_30%,rgba(16,185,129,0.18)_0%,rgba(5,150,105,0.06)_50%,transparent_75%)]"
+        }`} />
 
       {/* Top Header Bar */}
       <header className="flex justify-between items-center z-20 shrink-0 max-w-6xl mx-auto w-full px-2">
