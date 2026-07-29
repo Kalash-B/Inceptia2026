@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,6 +16,16 @@ export default function LoginPage() {
   });
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  // Nonce issued by GET /api/login — proves request came from this page
+  const [nonce, setNonce] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch a fresh nonce whenever the login page mounts
+    fetch("/api/login")
+      .then((r) => r.json())
+      .then((d) => { if (d.nonce) setNonce(d.nonce) })
+      .catch(() => { /* nonce unavailable — server will reject the POST */ })
+  }, []);
 
   const onLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -33,7 +43,7 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: user.email, pass: user.pass }),
+        body: JSON.stringify({ email: user.email, pass: user.pass, _nonce: nonce }),
       });
 
       const data = await res.json();

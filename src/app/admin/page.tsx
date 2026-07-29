@@ -42,7 +42,11 @@ export default function AdminPage() {
   const fetchRoster = async () => {
     try {
       setLoadingRoster(true);
-      const res = await fetch("/api/scan");
+      const res = await fetch("/api/scan", {
+        headers: {
+          "X-Admin-Key": process.env.NEXT_PUBLIC_ADMIN_KEY || "",
+        },
+      });
       const data = await res.json();
       if (res.ok && data.participants) {
         setRoster(data.participants);
@@ -59,13 +63,14 @@ export default function AdminPage() {
 
     setScanning(false);
     setStatus('loading');
-    setMessage("Searching Great Hall records for token signature...");
+    setMessage("Searching for token signature...");
 
     try {
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-Admin-Key": process.env.NEXT_PUBLIC_ADMIN_KEY || "",
         },
         body: JSON.stringify({ token: scannedToken.trim(), digit: digitRef.current }),
       });
@@ -234,21 +239,13 @@ export default function AdminPage() {
               </span>
             </div>
             <h1 className="text-3xl font-bold font-serif gold-spell-text mt-1">
-              THE GREAT HALL ADMIN SCANNER
+              ADMIN SCANNER
             </h1>
             <p className="text-xs text-neutral-400 font-mono mt-0.5">
-              Scan participant QR codes or enter manual tokens to issue food rations.
+              Scan participant QR codes.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-            <Link
-              href="/dashboard"
-              className="py-2 px-3.5 rounded-xl border border-amber-500/20 bg-neutral-900/40 hover:bg-neutral-800/60 text-amber-200 text-xs font-mono transition-all"
-            >
-              User Dashboard &rarr;
-            </Link>
-          </div>
         </header>
 
         {/* Top Grid: Counter Selector & Scanner Panel */}
@@ -291,32 +288,7 @@ export default function AdminPage() {
             </div>
 
             {/* Manual Token Entry Box */}
-            <div className="liquid-glass-card p-6 flex flex-col gap-4">
-              <h2 className="text-sm font-semibold uppercase tracking-widest text-amber-300 font-mono border-b border-amber-500/15 pb-3">
-                2. Manual Token / Email Entry
-              </h2>
-
-              <form onSubmit={handleManualSubmit} className="flex flex-col gap-3">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={manualToken}
-                    onChange={(e) => setManualToken(e.target.value)}
-                    placeholder="Enter Token (e.g. SammyK. or HP-GRYFF-101)"
-                    className="liquid-input text-xs font-mono flex-1"
-                  />
-                  <button
-                    type="submit"
-                    className="py-2.5 px-4 rounded-xl magical-btn text-xs font-bold uppercase transition-all shadow-[0_2px_10px_rgba(255,215,0,0.2)]"
-                  >
-                    Verify
-                  </button>
-                </div>
-                <span className="text-[10px] text-neutral-400">
-                  Use this if participant QR code is on a separate screen or camera is disabled.
-                </span>
-              </form>
-            </div>
+            
 
           </div>
 
