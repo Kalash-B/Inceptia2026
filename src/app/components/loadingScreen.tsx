@@ -12,8 +12,8 @@ const PRELOAD_IMAGES = [
   "/emblems/healthcare.svg",
   "/emblems/education.svg",
   "/emblems/otherinnovation.svg",
-  "/gallery/event1.jpg",
-  "/gallery/event2.jpg",
+  "/gallery/1.jpg",
+  "/gallery/2.jpg",
 ];
 
 interface Props {

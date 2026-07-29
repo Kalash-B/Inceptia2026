@@ -84,6 +84,7 @@ export default function LoginPage() {
       {/* Top Navigation Bar */}
       <header className="absolute top-6 left-6 right-6 flex justify-between items-center z-20 max-w-5xl mx-auto">
         <Link 
+          id="back-to-home-link"
           href="/" 
           className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-amber-200/80 hover:text-amber-300 transition-colors drop-shadow-[0_0_8px_rgba(255,215,0,0.5)]"
         >
@@ -130,6 +131,7 @@ export default function LoginPage() {
                 <span>✦</span> Magical E-Mail
               </label>
               <input
+                id="login-email-input"
                 type="email"
                 value={user.email}
                 onChange={(e) => setUser({ ...user, email: e.target.value })}
@@ -144,6 +146,7 @@ export default function LoginPage() {
                 <span>✦</span> Passphrase
               </label>
               <input
+                id="login-password-input"
                 type="password"
                 value={user.pass}
                 onChange={(e) => setUser({ ...user, pass: e.target.value })}
@@ -154,6 +157,7 @@ export default function LoginPage() {
             </div>
 
             <button
+              id="login-submit-btn"
               type="submit"
               disabled={loading}
               className="mt-3 w-full py-4 px-6 rounded-full magical-btn flex items-center justify-center gap-2 cursor-pointer font-bold text-sm tracking-widest uppercase transition-all shadow-[0_4px_25px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_35px_rgba(255,215,0,0.5)]"

@@ -1,6 +1,6 @@
 "use client";
 
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -21,6 +21,8 @@ export default function AdminPage() {
   const [participant, setParticipant] = useState<ParticipantInfo | null>(null);
   const [scanning, setScanning] = useState<boolean>(true);
   const [manualToken, setManualToken] = useState<string>('');
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
+  const [cameraError, setCameraError] = useState<string | null>(null);
   
   // Roster state
   const [roster, setRoster] = useState<ParticipantInfo[]>([]);
@@ -100,30 +102,32 @@ export default function AdminPage() {
   useEffect(() => {
     if (!isMounted || !scanning) return;
 
-    let scanner: Html5QrcodeScanner | null = null;
+    let qrCodeInstance: Html5Qrcode | null = null;
     const timer = setTimeout(() => {
       const readerEl = document.getElementById("reader");
       if (!readerEl) return;
 
       try {
-        scanner = new Html5QrcodeScanner(
-          "reader",
+        qrCodeInstance = new Html5Qrcode("reader");
+        setCameraError(null);
+
+        qrCodeInstance.start(
+          { facingMode: facingMode },
           {
             fps: 10,
             qrbox: { width: 240, height: 240 },
           },
-          false
-        );
-
-        scanner.render(
           async (decodedText) => {
-            if (scanner) {
-              await scanner.clear().catch(() => {});
+            if (qrCodeInstance && qrCodeInstance.isScanning) {
+              await qrCodeInstance.stop().catch((e) => console.error("Error stopping scanner:", e));
             }
             processScanToken(decodedText);
           },
-          () => {}
-        );
+          () => {} // silent error callback for scanning frame failures
+        ).catch((err) => {
+          console.error("Failed to start scanner:", err);
+          setCameraError("Failed to access camera. Please ensure permissions are granted and no other application is using it.");
+        });
       } catch (err) {
         console.error("Failed to initialize scanner:", err);
       }
@@ -131,11 +135,17 @@ export default function AdminPage() {
 
     return () => {
       clearTimeout(timer);
-      if (scanner) {
-        scanner.clear().catch(() => {});
+      if (qrCodeInstance) {
+        if (qrCodeInstance.isScanning) {
+          qrCodeInstance.stop().catch((e) => console.error("Error stopping scanner on cleanup:", e));
+        }
       }
     };
-  }, [scanning, isMounted]);
+  }, [scanning, isMounted, facingMode]);
+
+  const toggleCamera = () => {
+    setFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
+  };
 
   const handleNextScan = () => {
     setParticipant(null);
@@ -198,29 +208,18 @@ export default function AdminPage() {
     <div className="min-h-screen bg-[#07080c] text-neutral-100 font-sans p-4 md:p-8 relative overflow-hidden">
       {/* Embedded CSS overrides for html5-qrcode library UI components */}
       <style dangerouslySetInnerHTML={{ __html: `
-        #reader { border: none !important; padding: 0 !important; }
-        #reader__dashboard_section_csr button {
-          background-color: #ffd700 !important;
-          color: #07080c !important;
-          border-radius: 8px !important;
-          padding: 6px 14px !important;
+        #reader {
           border: none !important;
-          font-weight: bold !important;
-          font-size: 0.8rem !important;
-          cursor: pointer !important;
+          padding: 0 !important;
+          background: #07080c !important;
+          position: relative !important;
         }
-        #reader__camera_permission_button {
-          background-color: #ffd700 !important;
-          color: #07080c !important;
-          border-radius: 8px !important;
-          padding: 8px 16px !important;
-          font-weight: bold !important;
-          cursor: pointer !important;
-        }
-        #reader__scan_region {
-          border: 2px dashed rgba(255,215,0,0.3) !important;
-          border-radius: 12px !important;
-          overflow: hidden !important;
+        #reader video {
+          width: 100% !important;
+          height: auto !important;
+          border-radius: 16px !important;
+          object-fit: cover !important;
+          border: 1px solid rgba(255, 215, 0, 0.2) !important;
         }
       ` }} />
 
@@ -307,8 +306,26 @@ export default function AdminPage() {
                   className="w-full max-w-[340px] overflow-hidden rounded-2xl border border-amber-500/20 bg-[#07080c]"
                 />
 
+                {cameraError && (
+                  <div className="w-full max-w-[340px] text-center p-3.5 rounded-xl border border-red-500/40 bg-red-950/40 text-red-300 text-xs font-mono font-medium backdrop-blur-md shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                    {cameraError}
+                  </div>
+                )}
+
+                {/* Switch Camera Button */}
+                <button
+                  onClick={toggleCamera}
+                  type="button"
+                  className="py-2.5 px-4 rounded-xl border border-amber-500/30 bg-neutral-900/60 hover:bg-neutral-800/80 text-amber-200 hover:text-amber-100 font-mono text-xs flex items-center gap-2 cursor-pointer transition-all shadow-[0_2px_10px_rgba(255,215,0,0.1)] active:scale-95"
+                >
+                  <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.79M4 9h4.21m-4.21 0h.01M20 20v-5h-.581m0 0a8.003 8.003 0 01-15.357-2H3m12 2v5" />
+                  </svg>
+                  Switch to {facingMode === "environment" ? "Front" : "Back"} Camera
+                </button>
+
                 <span className="text-[10px] text-amber-300/60 font-mono">
-                  Camera feed active • Listening for QR signal
+                  Camera feed active • {facingMode === "environment" ? "Rear-Facing" : "Front-Facing"} Lens
                 </span>
               </div>
 
