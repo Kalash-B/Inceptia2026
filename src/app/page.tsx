@@ -207,8 +207,64 @@ function Page() {
                     />
                   </svg>
                 </button>
+              </motion.div>
 
+              {/* Hero Sponsor Logos Bar */}
+              <motion.div
+                variants={itemVariants}
+                className="mt-4 sm:mt-6 flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-6 bg-black/40 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-yellow-500/20"
+              >
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-yellow-400">
+                    Powered By
+                  </span>
+                  <a
+                    href="https://unstop.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-white/10 px-3 py-1.5 rounded-xl border border-white/15 flex items-center shadow-inner hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
+                  >
+                    <img
+                      src="/Unstop-Logo-Blue-Large.png"
+                      alt="Unstop"
+                      className="h-6 sm:h-7 w-auto object-contain brightness-110"
+                    />
+                  </a>
+                </div>
 
+                <div className="hidden sm:block h-6 w-px bg-yellow-500/20" />
+
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-yellow-200/80">
+                    Sponsors
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href="https://wetnjoy.in/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
+                    >
+                      <img
+                        src="/wetnjoy.webp"
+                        alt="Wet n Joy"
+                        className="h-5 sm:h-6 w-auto object-contain"
+                      />
+                    </a>
+                    <a
+                      href="https://befailproof.ai/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
+                    >
+                      <img
+                        src="/failproof.png"
+                        alt="Failproof AI"
+                        className="h-5 sm:h-6 w-auto object-contain"
+                      />
+                    </a>
+                  </div>
+                </div>
               </motion.div>
             </motion.div>
           </section>
