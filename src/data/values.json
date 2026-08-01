@@ -1,0 +1,28 @@
+{
+    "teams": [
+        {
+            "name": "Kremlin Spies",
+            "domain": "Unknown",
+            "team": [
+                {
+                    "name": "Samarth",
+                    "mail": "kazbrekker898@gmail.com",
+                    "password": "trial",
+                    "token": "SammyK.",
+                    "position": "Lead",
+                    "counter": 0,
+                    "avatar": "/profiles_char/harry.png"
+                },
+                {
+                    "name": "Saket",
+                    "mail": "saku@gmail.com",
+                    "password": "trial",
+                    "token": "SaketP.",
+                    "position": "Member",
+                    "counter": 0,
+                    "avatar": "/profiles_char/voldemort.png"
+                }
+            ]
+        }
+    ]
+}
