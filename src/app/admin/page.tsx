@@ -4,17 +4,21 @@ import { Html5Qrcode } from "html5-qrcode";
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface ParticipantInfo {
   name: string;
-  team: string;
-  email: string;
+  teamName: string;
+  mail: string;
   token: string;
+  position: 'Lead' | 'Member';
   counter: number;
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState<boolean>(false);
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const [digit, setDigit] = useState<number>(1);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'already_scanned' | 'error'>('idle');
   const [message, setMessage] = useState<string>('');
@@ -33,8 +37,18 @@ export default function AdminPage() {
   const digitRef = useRef(1);
 
   useEffect(() => {
-    setIsMounted(true);
-    fetchRoster();
+    // Verify admin session before mounting scanner
+    fetch("/api/admin-login/check", { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) {
+          router.replace("/admin/login");
+        } else {
+          setIsAuthorized(true);
+          setIsMounted(true);
+          fetchRoster();
+        }
+      })
+      .catch(() => router.replace("/admin/login"));
   }, []);
 
   useEffect(() => {
@@ -165,9 +179,9 @@ export default function AdminPage() {
   const filteredRoster = roster.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.teamName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.token.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.email.toLowerCase().includes(searchQuery.toLowerCase());
+      p.mail.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (filterCounter === 'all') return matchesSearch;
     if (filterCounter === 'counter1') return matchesSearch && p.counter >= 1;
@@ -191,13 +205,13 @@ export default function AdminPage() {
     }
   };
 
-  if (!isMounted) {
+  if (!isMounted || !isAuthorized) {
     return (
       <div className="min-h-screen bg-[#07080c] text-neutral-100 font-sans flex flex-col items-center justify-center p-4">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
           <p className="text-amber-200 text-xs tracking-wider uppercase font-serif">
-            Initializing Admin Camera Module...
+            Verifying Admin Credentials...
           </p>
         </div>
       </div>
@@ -381,7 +395,7 @@ export default function AdminPage() {
                         </div>
                         <div className="flex justify-between border-b border-white/5 pb-2">
                           <span className="text-[10px] text-neutral-400 uppercase tracking-widest">Team</span>
-                          <span className="text-xs font-semibold text-neutral-200">{participant.team}</span>
+                          <span className="text-xs font-semibold text-neutral-200">{participant.teamName}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-[10px] text-neutral-400 uppercase tracking-widest">Updated Food Counter</span>
@@ -477,9 +491,9 @@ export default function AdminPage() {
                     <tr key={p.token} className="hover:bg-amber-500/5 transition-colors">
                       <td className="py-3.5 px-4 font-semibold text-neutral-100">
                         <div>{p.name}</div>
-                        <div className="text-[10px] text-neutral-400 font-mono">{p.email}</div>
+                        <div className="text-[10px] text-neutral-400 font-mono">{p.mail}</div>
                       </td>
-                      <td className="py-3.5 px-4 text-amber-200/80">{p.team}</td>
+                      <td className="py-3.5 px-4 text-amber-200/80">{p.teamName}</td>
                       <td className="py-3.5 px-4 font-mono text-amber-300">{p.token}</td>
                       <td className="py-3.5 px-4">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold font-mono ${

@@ -11,7 +11,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   const [user, setUser] = useState({
-    email: "",
+    mail: "",
     pass: "",
   });
   const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ export default function LoginPage() {
     if (e) e.preventDefault();
     setErrorMsg("");
 
-    if (!user.email || !user.pass) {
+    if (!user.mail || !user.pass) {
       setErrorMsg("Please enter both email and password passphrase.");
       return;
     }
@@ -43,7 +43,7 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: user.email, pass: user.pass, _nonce: nonce }),
+        body: JSON.stringify({ mail: user.mail, pass: user.pass, _nonce: nonce }),
       });
 
       const data = await res.json();
@@ -65,7 +65,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full bg-[#0e0e0e] text-neutral-100 font-sans flex flex-col justify-center items-center p-4 relative overflow-hidden selection:bg-amber-400 selection:text-neutral-950">
-      
+
       {/* Hogwarts Castle Background Image matching Hero page */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Image
@@ -83,9 +83,9 @@ export default function LoginPage() {
 
       {/* Top Navigation Bar */}
       <header className="absolute top-6 left-6 right-6 flex justify-between items-center z-20 max-w-5xl mx-auto">
-        <Link 
+        <Link
           id="back-to-home-link"
-          href="/" 
+          href="/"
           className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-amber-200/80 hover:text-amber-300 transition-colors drop-shadow-[0_0_8px_rgba(255,215,0,0.5)]"
         >
           <span>&larr;</span> Back to Sanctuary
@@ -101,7 +101,7 @@ export default function LoginPage() {
       >
         {/* Hogwarts Glass Portal Card */}
         <div className="liquid-glass-card p-8 md:p-10 relative overflow-hidden flex flex-col items-center border border-amber-500/30 shadow-[0_0_50px_rgba(255,215,0,0.15)] bg-black/60 backdrop-blur-xl">
-          
+
           {/* Title Heading */}
           <h1
             className="font-harry-potter text-5xl sm:text-6xl text-white text-center italic tracking-wider mb-8 select-none"
@@ -133,9 +133,9 @@ export default function LoginPage() {
               <input
                 id="login-email-input"
                 type="email"
-                value={user.email}
-                onChange={(e) => setUser({ ...user, email: e.target.value })}
-                placeholder="kazbrekker898@gmail.com"
+                value={user.mail}
+                onChange={(e) => setUser({ ...user, mail: e.target.value })}
+                placeholder="ahamsamartha@gmail.com"
                 className="liquid-input text-sm focus:border-amber-400/80 focus:shadow-[0_0_15px_rgba(255,215,0,0.25)]"
                 required
               />
