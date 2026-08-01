@@ -1,5 +1,5 @@
 import { connect } from '@/dbConfig/dbConfig'
-import Participant from '@/models/participant'
+import Team from '@/models/participant'
 import Elysia from 'elysia'
 import seedData from "@/data/values.json"
 import { requireAdminKey, generateNonce, verifyNonce, requireSessionOrAdminKey } from '@/lib/apiAuth'
@@ -17,8 +17,40 @@ const AVATAR_MAP: Record<number, string> = {
     6: "/profiles_char/voldemort.png",
 }
 
+// ---------------------------------------------------------------------------
+// Helper: find a team document and the specific member sub-document
+// by the member's mail address or token.
+// ---------------------------------------------------------------------------
+
+async function findMemberByMail(mail: string) {
+    const teamDoc = await Team.findOne({ "team.mail": mail.trim().toLowerCase() })
+    if (!teamDoc) return null
+    const member = teamDoc.team.find((m: any) => m.mail === mail.trim().toLowerCase())
+    return member ? { teamDoc, member } : null
+}
+
+async function findMemberByToken(token: string) {
+    const teamDoc = await Team.findOne({ "team.token": token.trim() })
+    if (!teamDoc) return null
+    const member = teamDoc.team.find((m: any) => m.token === token.trim())
+    return member ? { teamDoc, member } : null
+}
+
+// Serialize a member sub-document into the shape used by all API responses
+function serializeMember(teamName: string, member: any) {
+    return {
+        name: member.name,
+        teamName,
+        mail: member.mail,
+        token: member.token,
+        position: member.position,
+        counter: member.counter,
+        avatar: member.avatar || ""
+    }
+}
+
 const app = new Elysia({ prefix: '/api' })
-    // GET /api/scan — developer backdoor: seeds DB + returns all participants
+    // GET /api/scan — admin-key protected: seeds DB + returns all teams/members
     .get("/scan", async ({ request, set }: any) => {
         const authErr = requireAdminKey(request.headers)
         if (authErr) {
@@ -27,22 +59,32 @@ const app = new Elysia({ prefix: '/api' })
         }
         try {
             await connect()
-            for (const item of (seedData as any).participants) {
-                const exists = await Participant.findOne({ email: item.email })
+
+            // Seed teams from values.json if they don't exist yet
+            for (const teamEntry of (seedData as any).teams) {
+                const exists = await Team.findOne({ name: teamEntry.name })
                 if (!exists) {
-                    await Participant.create({
-                        name: item.name,
-                        team: item.team,
-                        email: item.email,
-                        password: item.password,
-                        counter: item.counter ?? 0,
-                        token: item.token,
-                        avatar: item.avatar || ""
+                    await Team.create({
+                        name: teamEntry.name,
+                        team: teamEntry.team.map((m: any) => ({
+                            name: m.name,
+                            mail: m.mail.trim().toLowerCase(),
+                            password: m.password,
+                            token: m.token,
+                            position: m.position,
+                            counter: m.counter ?? 0,
+                            avatar: m.avatar || ""
+                        }))
                     })
                 }
             }
-            const all = await Participant.find({})
-            return { participants: all }
+
+            const allTeams = await Team.find({})
+            // Flatten all members for the roster view
+            const participants = allTeams.flatMap((t: any) =>
+                t.team.map((m: any) => serializeMember(t.name, m))
+            )
+            return { participants }
         } catch (error: any) {
             console.log("[API] Error connecting to the database", error)
             set.status = 500
@@ -58,11 +100,11 @@ const app = new Elysia({ prefix: '/api' })
         }
         return { nonce: generateNonce(secret) }
     })
-    // GET /api/participant — session or admin-key protected lookup
+    // GET /api/participant — session or admin-key protected member lookup
     .get("/participant", async ({ request, query, set }: any) => {
-        const email = query?.email as string | undefined
+        const mail = query?.mail as string | undefined
         const token = query?.token as string | undefined
-        const identifier = email || token || null
+        const identifier = mail || token || null
 
         const authErr = requireSessionOrAdminKey(request.headers, identifier)
         if (authErr) {
@@ -71,26 +113,23 @@ const app = new Elysia({ prefix: '/api' })
         }
         try {
             await connect()
-            if (!email && !token) {
+            if (!mail && !token) {
                 set.status = 400
-                return { success: false, error: "Email or token query param required" }
+                return { success: false, error: "Mail or token query param required" }
             }
-            const filter = email ? { email: email.trim().toLowerCase() } : { token }
-            const participant = await Participant.findOne(filter)
-            if (!participant) {
+
+            const result = mail
+                ? await findMemberByMail(mail)
+                : await findMemberByToken(token!)
+
+            if (!result) {
                 set.status = 404
                 return { success: false, error: "Participant not found" }
             }
+
             return {
                 success: true,
-                participant: {
-                    name: participant.name,
-                    team: participant.team,
-                    email: participant.email,
-                    token: participant.token,
-                    counter: participant.counter,
-                    avatar: participant.avatar || ""
-                }
+                participant: serializeMember(result.teamDoc.name, result.member)
             }
         } catch (error: any) {
             set.status = 500
@@ -132,29 +171,31 @@ async function handleScanPost(request: Request): Promise<Response> {
 
     try {
         await connect()
-        const participant = await Participant.findOne({ token })
-        if (!participant) {
+        const result = await findMemberByToken(token)
+        if (!result) {
             return json({ success: false, error: "Participant not found in Hogwarts registry" }, 404)
         }
 
+        const { teamDoc, member } = result
         const targetDigit = Number(digit)
-        if (participant.counter >= targetDigit) {
+
+        if (member.counter >= targetDigit) {
             return json({
                 success: false,
                 status: 'already_scanned',
-                message: `${participant.name} has already claimed food up to Counter ${participant.counter}`,
-                participant
+                message: `${member.name} has already claimed food up to Counter ${member.counter}`,
+                participant: serializeMember(teamDoc.name, member)
             })
         }
 
-        participant.counter = targetDigit
-        await participant.save()
+        member.counter = targetDigit
+        await teamDoc.save()
 
         return json({
             success: true,
             status: 'ok',
-            message: `Food ration approved for ${participant.name} at Counter ${targetDigit}!`,
-            participant
+            message: `Food ration approved for ${member.name} at Counter ${targetDigit}!`,
+            participant: serializeMember(teamDoc.name, member)
         })
     } catch (error: any) {
         console.error("[API] Error processing scan:", error)
@@ -168,14 +209,14 @@ async function handleLoginPost(request: Request): Promise<Response> {
         return json({ success: false, error: "Server misconfiguration" }, 500)
     }
 
-    let body: { email?: string; pass?: string; _nonce?: string }
+    let body: { mail?: string; pass?: string; _nonce?: string }
     try {
         body = await request.json()
     } catch {
         return json({ success: false, error: "Invalid JSON body" }, 400)
     }
 
-    const { email, pass, _nonce } = body
+    const { mail, pass, _nonce } = body
 
     // Verify nonce — ensures the request originated from our login page
     const nonceCheck = verifyNonce(_nonce, secret)
@@ -187,15 +228,15 @@ async function handleLoginPost(request: Request): Promise<Response> {
         }, 403)
     }
 
-    if (!pass || !email) {
-        return json({ success: false, error: "Missing email or password" }, 400)
+    if (!pass || !mail) {
+        return json({ success: false, error: "Missing mail or password" }, 400)
     }
 
     try {
         await connect()
-        const participant = await Participant.findOne({ email: email.trim().toLowerCase() })
+        const result = await findMemberByMail(mail)
 
-        if (!participant) {
+        if (!result) {
             return json({
                 success: false,
                 status: "not_found",
@@ -203,7 +244,9 @@ async function handleLoginPost(request: Request): Promise<Response> {
             }, 404)
         }
 
-        if (pass !== participant.password) {
+        const { teamDoc, member } = result
+
+        if (pass !== member.password) {
             return json({
                 success: false,
                 status: "invalid_password",
@@ -211,24 +254,17 @@ async function handleLoginPost(request: Request): Promise<Response> {
             }, 401)
         }
 
-        if (!participant.avatar) {
+        if (!member.avatar) {
             const randomDigit = Math.floor(Math.random() * 6) + 1
-            participant.avatar = AVATAR_MAP[randomDigit] || AVATAR_MAP[1]
-            await participant.save()
+            member.avatar = AVATAR_MAP[randomDigit] || AVATAR_MAP[1]
+            await teamDoc.save()
         }
 
         return json({
             success: true,
             status: "ok",
             message: "Authentication successful! Welcome to the Great Hall.",
-            participant: {
-                name: participant.name,
-                team: participant.team,
-                email: participant.email,
-                token: participant.token,
-                counter: participant.counter,
-                avatar: participant.avatar
-            }
+            participant: serializeMember(teamDoc.name, member)
         })
     } catch (error: any) {
         console.log("Error connecting to DB:", error)

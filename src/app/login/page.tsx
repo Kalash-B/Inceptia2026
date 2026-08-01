@@ -11,7 +11,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   const [user, setUser] = useState({
-    email: "",
+    mail: "",
     pass: "",
   });
   const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ export default function LoginPage() {
     if (e) e.preventDefault();
     setErrorMsg("");
 
-    if (!user.email || !user.pass) {
+    if (!user.mail || !user.pass) {
       setErrorMsg("Please enter both email and password passphrase.");
       return;
     }
@@ -43,7 +43,7 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: user.email, pass: user.pass, _nonce: nonce }),
+        body: JSON.stringify({ mail: user.mail, pass: user.pass, _nonce: nonce }),
       });
 
       const data = await res.json();
@@ -133,8 +133,8 @@ export default function LoginPage() {
               <input
                 id="login-email-input"
                 type="email"
-                value={user.email}
-                onChange={(e) => setUser({ ...user, email: e.target.value })}
+                value={user.mail}
+                onChange={(e) => setUser({ ...user, mail: e.target.value })}
                 placeholder="kazbrekker898@gmail.com"
                 className="liquid-input text-sm focus:border-amber-400/80 focus:shadow-[0_0_15px_rgba(255,215,0,0.25)]"
                 required

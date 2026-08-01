@@ -9,9 +9,10 @@ import MagicalClouds from "../components/magicalClouds";
 
 interface Participant {
   name: string;
-  team: string;
-  email: string;
+  teamName: string;
+  mail: string;
   token: string;
+  position: 'Lead' | 'Member';
   counter: number;
   avatar?: string;
 }
@@ -46,7 +47,7 @@ function getParticipantAvatar(participant: Participant): string {
     return participant.avatar;
   }
   let hash = 0;
-  const str = (participant.email || participant.name || "default") + (participant.team || "");
+  const str = (participant.mail || participant.name || "default") + (participant.teamName || "");
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
@@ -64,10 +65,10 @@ export default function DashboardPage() {
   const [copied, setCopied] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const fetchLatestParticipant = async (email: string, token: string) => {
+  const fetchLatestParticipant = async (mail: string, token: string) => {
     try {
       setRefreshing(true);
-      const res = await fetch(`/api/participant?email=${encodeURIComponent(email)}`);
+      const res = await fetch(`/api/participant?mail=${encodeURIComponent(mail)}`);
       const data = await res.json();
       if (res.ok && data.success && data.participant) {
         setParticipant(data.participant);
@@ -96,7 +97,7 @@ export default function DashboardPage() {
       setParticipant(parsed);
       document.cookie = `hogwarts_session=${encodeURIComponent(cachedUserStr)}; path=/; max-age=86400; SameSite=Lax`;
       generateQR(parsed.token);
-      fetchLatestParticipant(parsed.email, parsed.token);
+      fetchLatestParticipant(parsed.mail, parsed.token);
     } catch (e) {
       router.push("/login");
     }
@@ -182,7 +183,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <button
             id="dashboard-sync-btn"
-            onClick={() => fetchLatestParticipant(participant.email, participant.token)}
+            onClick={() => fetchLatestParticipant(participant.mail, participant.token)}
             disabled={refreshing}
             className="px-3 py-1.5 rounded-xl border border-amber-500/20 bg-neutral-900/50 text-amber-200 text-xs font-mono hover:bg-neutral-800 transition-all flex items-center gap-1.5 cursor-pointer"
           >
@@ -222,7 +223,7 @@ export default function DashboardPage() {
               className={`w-full h-full rounded-full object-cover object-center border ${isRed ? "border-red-400/40" : "border-emerald-400/40"} shadow-inner group-hover:scale-105 transition-transform duration-300`}
             />
             <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gradient-to-r ${isRed ? "from-red-600 to-rose-700" : "from-emerald-600 to-teal-700"} text-white font-mono font-extrabold text-[9px] uppercase px-3 py-0.5 rounded-full shadow z-10 whitespace-nowrap`}>
-              LEAD
+              {participant.position}
             </div>
           </div>
 
@@ -236,23 +237,25 @@ export default function DashboardPage() {
                 {participant.name}
               </h1>
               <div className="text-xs font-mono font-semibold text-amber-300">
-                Team: <span className="text-neutral-100">{participant.team}</span>
+                Team: <span className="text-neutral-100">{participant.teamName}</span>
               </div>
             </div>
 
             <div className="border-t border-amber-500/15 pt-2.5 flex flex-col gap-1.5 text-xs font-mono">
               <div>
                 <span className="text-neutral-400">Team Email:</span>{" "}
-                <span className="text-neutral-200">{participant.email}</span>
+                <span className="text-neutral-200">{participant.mail}</span>
               </div>
 
               <div>
-                <span className="text-neutral-400">Team Members:</span>
-                <div className="text-amber-200/90 font-medium text-[11px] mt-0.5 leading-relaxed">
-                  • {participant.name} (Lead)<br />
-                  • Hermione Granger<br />
-                  • Ron Weasley
-                </div>
+                <span className="text-neutral-400">Position:</span>{" "}
+                <span className={`font-semibold ${
+                  participant.position === 'Lead'
+                    ? 'text-amber-300'
+                    : 'text-neutral-200'
+                }`}>
+                  {participant.position}
+                </span>
               </div>
 
               <div>

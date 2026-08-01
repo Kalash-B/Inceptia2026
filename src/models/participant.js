@@ -1,17 +1,12 @@
 import mongoose from 'mongoose'
 
-const participantSchema = new mongoose.Schema({
+const teamMemberSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
-        default: "Unknown"
+        default: 'Unknown'
     },
-    team: {
-        type: String,
-        required: true,
-        default: "Unknown"
-    },
-    email: {
+    mail: {
         type: String,
         required: true,
         unique: true
@@ -19,10 +14,15 @@ const participantSchema = new mongoose.Schema({
     password: {
         type: String,
         required: true,
-        default: "sammytried"
+        default: 'trial'
     },
     token: {
         type: String,
+        default: ''
+    },
+    position: {
+        type: String,
+        enum: ['Lead', 'Member'],
         required: true
     },
     counter: {
@@ -31,10 +31,30 @@ const participantSchema = new mongoose.Schema({
     },
     avatar: {
         type: String,
-        default: ""
+        default: ''
     }
 })
 
-const Participant = mongoose.models.participant || mongoose.model("participant", participantSchema)
+const teamSchema = new mongoose.Schema(
+    {
+        name: {
+            type: String,
+            required: true,
+            default: 'Unknown'
+        },
+        domain: {
+            type: String,
+            required: true,
+            default: "Unknown"
+        },
+        team: {
+            type: [teamMemberSchema],
+            default: []
+        }
+    },
+    { timestamps: true }
+)
 
-export default Participant
+const Team = mongoose.models.teams || mongoose.model('teams', teamSchema)
+
+export default Team

@@ -130,11 +130,12 @@ export function requireSessionOrAdminKey(
   if (requestedIdentifier) {
     try {
       const session = JSON.parse(decodeURIComponent(sessionRaw))
-      const sessionEmail: string = session?.email || ""
+      // Support both new schema (mail) and legacy (email) session shapes
+      const sessionMail: string = session?.mail || session?.email || ""
       const sessionToken: string = session?.token || ""
 
       const match =
-        sessionEmail.toLowerCase() === requestedIdentifier.toLowerCase() ||
+        sessionMail.toLowerCase() === requestedIdentifier.toLowerCase() ||
         sessionToken === requestedIdentifier
 
       if (!match) {

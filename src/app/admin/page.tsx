@@ -7,9 +7,10 @@ import Link from "next/link";
 
 interface ParticipantInfo {
   name: string;
-  team: string;
-  email: string;
+  teamName: string;
+  mail: string;
   token: string;
+  position: 'Lead' | 'Member';
   counter: number;
 }
 
@@ -165,9 +166,9 @@ export default function AdminPage() {
   const filteredRoster = roster.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.teamName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.token.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.email.toLowerCase().includes(searchQuery.toLowerCase());
+      p.mail.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (filterCounter === 'all') return matchesSearch;
     if (filterCounter === 'counter1') return matchesSearch && p.counter >= 1;
@@ -477,9 +478,9 @@ export default function AdminPage() {
                     <tr key={p.token} className="hover:bg-amber-500/5 transition-colors">
                       <td className="py-3.5 px-4 font-semibold text-neutral-100">
                         <div>{p.name}</div>
-                        <div className="text-[10px] text-neutral-400 font-mono">{p.email}</div>
+                        <div className="text-[10px] text-neutral-400 font-mono">{p.mail}</div>
                       </td>
-                      <td className="py-3.5 px-4 text-amber-200/80">{p.team}</td>
+                      <td className="py-3.5 px-4 text-amber-200/80">{p.teamName}</td>
                       <td className="py-3.5 px-4 font-mono text-amber-300">{p.token}</td>
                       <td className="py-3.5 px-4">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold font-mono ${
