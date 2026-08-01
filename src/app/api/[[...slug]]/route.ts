@@ -2,7 +2,7 @@ import { connect } from '@/dbConfig/dbConfig'
 import Team from '@/models/participant'
 import Elysia from 'elysia'
 import seedData from "@/data/values.json"
-import { requireAdminKey, generateNonce, verifyNonce, requireSessionOrAdminKey } from '@/lib/apiAuth'
+import { requireAdminKey, generateNonce, verifyNonce, requireSessionOrAdminKey, verifyAdminSession } from '@/lib/apiAuth'
 
 // ---------------------------------------------------------------------------
 // GET routes — handled by Elysia (no body parsing needed)
@@ -36,11 +36,13 @@ async function findMemberByToken(token: string) {
     return member ? { teamDoc, member } : null
 }
 
-// Serialize a member sub-document into the shape used by all API responses
-function serializeMember(teamName: string, member: any) {
+// Serialize a member sub-document into the shape used by all API responses.
+// Includes the parent team's name and domain.
+function serializeMember(teamName: string, domain: string, member: any) {
     return {
         name: member.name,
         teamName,
+        domain,
         mail: member.mail,
         token: member.token,
         position: member.position,
@@ -66,6 +68,7 @@ const app = new Elysia({ prefix: '/api' })
                 if (!exists) {
                     await Team.create({
                         name: teamEntry.name,
+                        domain: teamEntry.domain || "Unknown",
                         team: teamEntry.team.map((m: any) => ({
                             name: m.name,
                             mail: m.mail.trim().toLowerCase(),
@@ -82,7 +85,7 @@ const app = new Elysia({ prefix: '/api' })
             const allTeams = await Team.find({})
             // Flatten all members for the roster view
             const participants = allTeams.flatMap((t: any) =>
-                t.team.map((m: any) => serializeMember(t.name, m))
+                t.team.map((m: any) => serializeMember(t.name, t.domain || "Unknown", m))
             )
             return { participants }
         } catch (error: any) {
@@ -99,6 +102,24 @@ const app = new Elysia({ prefix: '/api' })
             return { success: false, error: "Server misconfiguration" }
         }
         return { nonce: generateNonce(secret) }
+    })
+    // GET /api/admin-login — issues a fresh nonce for the admin login page
+    .get("/admin-login", async ({ set }: any) => {
+        const secret = process.env.AUTH
+        if (!secret) {
+            set.status = 500
+            return { success: false, error: "Server misconfiguration" }
+        }
+        return { nonce: generateNonce(secret) }
+    })
+    // GET /api/admin-login/check — validates the admin_session cookie
+    .get("/admin-login/check", async ({ request, set }: any) => {
+        const err = verifyAdminSession(request.headers)
+        if (err) {
+            set.status = err.status
+            return err.json()
+        }
+        return { success: true }
     })
     // GET /api/participant — session or admin-key protected member lookup
     .get("/participant", async ({ request, query, set }: any) => {
@@ -129,7 +150,7 @@ const app = new Elysia({ prefix: '/api' })
 
             return {
                 success: true,
-                participant: serializeMember(result.teamDoc.name, result.member)
+                participant: serializeMember(result.teamDoc.name, result.teamDoc.domain || "Unknown", result.member)
             }
         } catch (error: any) {
             set.status = 500
@@ -152,7 +173,10 @@ function json(data: unknown, status = 200): Response {
 }
 
 async function handleScanPost(request: Request): Promise<Response> {
-    // Admin scanner — admin key required
+    // Admin scanner — requires both a valid admin_session cookie AND the X-Admin-Key header
+    const sessionErr = verifyAdminSession(request.headers)
+    if (sessionErr) return sessionErr
+
     const authErr = requireAdminKey(request.headers)
     if (authErr) return authErr
 
@@ -184,7 +208,7 @@ async function handleScanPost(request: Request): Promise<Response> {
                 success: false,
                 status: 'already_scanned',
                 message: `${member.name} has already claimed food up to Counter ${member.counter}`,
-                participant: serializeMember(teamDoc.name, member)
+                participant: serializeMember(teamDoc.name, teamDoc.domain || "Unknown", member)
             })
         }
 
@@ -195,7 +219,7 @@ async function handleScanPost(request: Request): Promise<Response> {
             success: true,
             status: 'ok',
             message: `Food ration approved for ${member.name} at Counter ${targetDigit}!`,
-            participant: serializeMember(teamDoc.name, member)
+            participant: serializeMember(teamDoc.name, teamDoc.domain || "Unknown", member)
         })
     } catch (error: any) {
         console.error("[API] Error processing scan:", error)
@@ -264,12 +288,73 @@ async function handleLoginPost(request: Request): Promise<Response> {
             success: true,
             status: "ok",
             message: "Authentication successful! Welcome to the Great Hall.",
-            participant: serializeMember(teamDoc.name, member)
+            participant: serializeMember(teamDoc.name, teamDoc.domain || "Unknown", member)
         })
     } catch (error: any) {
         console.log("Error connecting to DB:", error)
         return json({ success: false, error: error.message || "Failed to authenticate" }, 500)
     }
+}
+
+async function handleAdminLoginPost(request: Request): Promise<Response> {
+    const secret = process.env.AUTH
+    const adminPass = process.env.ADMIN_PASS
+    const ADMIN_USERNAME = "Sammy K."
+
+    if (!secret || !adminPass) {
+        return json({ success: false, error: "Server misconfiguration" }, 500)
+    }
+
+    let body: { username?: string; password?: string; _nonce?: string }
+    try {
+        body = await request.json()
+    } catch {
+        return json({ success: false, error: "Invalid JSON body" }, 400)
+    }
+
+    const { username, password, _nonce } = body
+
+    // Verify nonce — prevents direct API abuse
+    const nonceCheck = verifyNonce(_nonce, secret)
+    if (!nonceCheck.valid) {
+        console.warn("[API/admin-login] Nonce check failed:", nonceCheck.reason)
+        return json({
+            success: false,
+            error: "Forbidden: Invalid or expired request token. Please refresh the page and try again."
+        }, 403)
+    }
+
+    if (!username || !password) {
+        return json({ success: false, error: "Missing username or password" }, 400)
+    }
+
+    if (username !== ADMIN_USERNAME) {
+        return json({ success: false, error: "Invalid credentials" }, 401)
+    }
+
+    if (password !== adminPass) {
+        return json({ success: false, error: "Invalid credentials" }, 401)
+    }
+
+    // Issue a signed admin session token (same HMAC nonce pattern, long-lived: 8 hours)
+    const { createHmac } = await import("crypto")
+    const ts = String(Date.now())
+    const sig = createHmac("sha256", secret).update(`admin.${ts}`).digest("hex")
+    const sessionToken = `${ts}.${sig}`
+
+    const response = json({
+        success: true,
+        message: "Admin authentication successful."
+    })
+
+    // Set HttpOnly cookie so JS cannot read it (extra security layer)
+    const headers = new Headers(response.headers)
+    headers.set(
+        "Set-Cookie",
+        `admin_session=${sessionToken}; Path=/; Max-Age=${8 * 60 * 60}; HttpOnly; SameSite=Strict`
+    )
+
+    return new Response(response.body, { status: 200, headers })
 }
 
 // Route POST requests manually — no Elysia involvement
@@ -279,6 +364,7 @@ export async function POST(request: Request): Promise<Response> {
 
     if (pathname === '/api/scan') return handleScanPost(request)
     if (pathname === '/api/login') return handleLoginPost(request)
+    if (pathname === '/api/admin-login') return handleAdminLoginPost(request)
 
     return json({ error: "Not found" }, 404)
 }

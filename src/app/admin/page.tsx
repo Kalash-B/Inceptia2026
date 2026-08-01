@@ -4,6 +4,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface ParticipantInfo {
   name: string;
@@ -15,7 +16,9 @@ interface ParticipantInfo {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState<boolean>(false);
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const [digit, setDigit] = useState<number>(1);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'already_scanned' | 'error'>('idle');
   const [message, setMessage] = useState<string>('');
@@ -34,8 +37,18 @@ export default function AdminPage() {
   const digitRef = useRef(1);
 
   useEffect(() => {
-    setIsMounted(true);
-    fetchRoster();
+    // Verify admin session before mounting scanner
+    fetch("/api/admin-login/check", { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) {
+          router.replace("/admin/login");
+        } else {
+          setIsAuthorized(true);
+          setIsMounted(true);
+          fetchRoster();
+        }
+      })
+      .catch(() => router.replace("/admin/login"));
   }, []);
 
   useEffect(() => {
@@ -192,13 +205,13 @@ export default function AdminPage() {
     }
   };
 
-  if (!isMounted) {
+  if (!isMounted || !isAuthorized) {
     return (
       <div className="min-h-screen bg-[#07080c] text-neutral-100 font-sans flex flex-col items-center justify-center p-4">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
           <p className="text-amber-200 text-xs tracking-wider uppercase font-serif">
-            Initializing Admin Camera Module...
+            Verifying Admin Credentials...
           </p>
         </div>
       </div>
@@ -382,7 +395,7 @@ export default function AdminPage() {
                         </div>
                         <div className="flex justify-between border-b border-white/5 pb-2">
                           <span className="text-[10px] text-neutral-400 uppercase tracking-widest">Team</span>
-                          <span className="text-xs font-semibold text-neutral-200">{participant.team}</span>
+                          <span className="text-xs font-semibold text-neutral-200">{participant.teamName}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-[10px] text-neutral-400 uppercase tracking-widest">Updated Food Counter</span>

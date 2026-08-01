@@ -1,5 +1,8 @@
 import { createHmac, timingSafeEqual } from "crypto"
 
+// Admin session max age: 8 hours
+const ADMIN_SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000
+
 // ---------------------------------------------------------------------------
 // Admin-key guard
 // Used by /scan (GET + POST) — developer backdoor and scanner endpoint.
@@ -154,6 +157,73 @@ export function requireSessionOrAdminKey(
   }
 
   return null // session valid
+}
+
+// ---------------------------------------------------------------------------
+// Admin session guard
+// Used by /admin-login/check and POST /scan — verifies the admin_session
+// cookie set by POST /api/admin-login.
+// Cookie format: "<timestamp>.<hmac-hex>" signed with AUTH + "admin." prefix.
+// ---------------------------------------------------------------------------
+
+export function verifyAdminSession(headers: Headers): Response | null {
+  const secret = process.env.AUTH
+  if (!secret) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Server misconfiguration: AUTH secret not set" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  const cookieHeader = headers.get("cookie") || ""
+  const cookies = parseCookies(cookieHeader)
+  const sessionToken = cookies["admin_session"]
+
+  if (!sessionToken) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized: Admin session required" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  const parts = sessionToken.split(".")
+  if (parts.length !== 2) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized: Malformed admin session" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  const [ts, sig] = parts
+  const timestamp = Number(ts)
+
+  if (isNaN(timestamp)) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized: Invalid session timestamp" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  const age = Date.now() - timestamp
+  if (age < 0 || age > ADMIN_SESSION_MAX_AGE_MS) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized: Admin session expired" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  const expectedSig = createHmac("sha256", secret).update(`admin.${ts}`).digest("hex")
+  const sigBuf = Buffer.from(sig, "hex")
+  const expBuf = Buffer.from(expectedSig, "hex")
+
+  if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Forbidden: Invalid admin session signature" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  return null // session is valid
 }
 
 // ---------------------------------------------------------------------------

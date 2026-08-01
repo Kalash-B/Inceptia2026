@@ -10,6 +10,7 @@ import MagicalClouds from "../components/magicalClouds";
 interface Participant {
   name: string;
   teamName: string;
+  domain: string;
   mail: string;
   token: string;
   position: 'Lead' | 'Member';
@@ -259,9 +260,9 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <span className="text-neutral-400">House Assignment:</span>{" "}
-                <span className={isRed ? "text-red-400 font-semibold" : "text-emerald-400 font-semibold"}>
-                  {isRed ? "Gryffindor Elite" : "Slytherin House"}
+                <span className="text-neutral-400">Domain:</span>{" "}
+                <span className="text-amber-300 font-semibold">
+                  {participant.domain || "—"}
                 </span>
               </div>
             </div>
