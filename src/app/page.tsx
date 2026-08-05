@@ -263,6 +263,42 @@ function Page() {
                         className="h-5 sm:h-6 w-auto object-contain"
                       />
                     </a>
+                    <a
+                      href="https://dobraindia.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
+                    >
+                      <img
+                        src="/dobra.webp"
+                        alt="Dobra"
+                        className="h-5 sm:h-6 w-auto object-contain"
+                      />
+                    </a>
+                    <a
+                      href="https://www.oxyred.in/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
+                    >
+                      <img
+                        src="/oxyred.jpg"
+                        alt="OxyRed"
+                        className="h-5 sm:h-6 w-auto object-contain rounded-md"
+                      />
+                    </a>
+                    <a
+                      href="https://theframedwall.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
+                    >
+                      <img
+                        src="/framedwall.jpg"
+                        alt="The Framed Wall"
+                        className="h-5 sm:h-6 w-auto object-contain rounded-md"
+                      />
+                    </a>
                   </div>
                 </div>
               </motion.div>

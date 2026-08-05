@@ -35,6 +35,27 @@ const sponsors: Sponsor[] = [
     logo: "/failproof.png",
     url: "https://befailproof.ai/",
   },
+  {
+    tier: "gold",
+    name: "Dobra",
+    tagline: "Snack & Refreshment Partner",
+    logo: "/dobra.webp",
+    url: "https://dobraindia.com/",
+  },
+  {
+    tier: "gold",
+    name: "OxyRed",
+    tagline: "Official Partner",
+    logo: "/oxyred.jpg",
+    url: "https://www.oxyred.in/",
+  },
+  {
+    tier: "gold",
+    name: "The Framed Wall",
+    tagline: "Decor & Framing Partner",
+    logo: "/framedwall.jpg",
+    url: "https://theframedwall.com/",
+  },
 ];
 
 const tierConfig = {
@@ -209,7 +230,7 @@ export default function SponsorsSection() {
           <p className="text-center text-xs uppercase tracking-[0.3em] text-yellow-400/60 font-semibold mb-5">
             — Our Sponsors —
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {goldSponsors.map((s, idx) => (
               <SponsorCard key={`${s.name}-${idx}`} sponsor={s} />
             ))}
