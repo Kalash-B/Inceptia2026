@@ -112,6 +112,21 @@ function Page() {
       </AnimatePresence>
 
       <div id="main-scroll-container" className={`relative w-full h-screen overflow-y-scroll scroll-smooth snap-y snap-mandatory bg-surface ${isLoading ? 'overflow-hidden' : ''}`}>
+        {/* Floating Navbar */}
+        <header className="fixed top-0 left-0 w-full z-50 px-6 sm:px-12 py-4 flex justify-between items-center bg-transparent pointer-events-none">
+          <div className="font-harry-potter text-2xl text-white tracking-wider drop-shadow-[0_0_10px_rgba(255,215,0,0.4)] select-none pointer-events-auto">
+            INCEPTIA
+          </div>
+          <div className="pointer-events-auto">
+            <Link
+              href="/login"
+              className="px-6 py-2 rounded-full border border-yellow-500/35 bg-black/60 text-sm font-bold text-yellow-400 hover:bg-yellow-500/15 hover:scale-105 transition-all duration-300 backdrop-blur-md shadow-[0_0_15px_rgba(255,215,0,0.1)]"
+            >
+              ✦ LOGIN ✦
+            </Link>
+          </div>
+        </header>
+
         {/* Background Image (covers all 7 sections and scrolls naturally) */}
         <div className="absolute top-0 left-0 w-full h-[700vh] z-0 pointer-events-none">
           <Image
@@ -128,38 +143,38 @@ function Page() {
         {/* <WandCursor /> */}
 
         {/* 1. Hero Section */}
-        <div className="w-full h-screen snap-start snap-always shrink-0 overflow-hidden flex flex-col justify-center items-start relative z-10">
-          <section className="relative w-full flex flex-col items-center md:items-start justify-center text-center md:text-left px-4 sm:px-8 md:px-24 py-12">
+        <div className="w-full h-screen snap-start snap-always shrink-0 overflow-y-auto flex flex-col justify-center items-start relative z-10">
+          <section className="relative w-full flex flex-col items-center md:items-start justify-center text-center md:text-left px-4 sm:px-8 md:px-24 py-4 sm:py-6 md:py-12">
             {/* Hero Content */}
             <motion.div
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="max-w-4xl flex flex-col items-center md:items-start justify-center gap-4 mt-12 w-full"
+              className="max-w-4xl flex flex-col items-center md:items-start justify-center gap-2.5 sm:gap-3.5 mt-4 sm:mt-8 w-full"
             >
               {/* College & Dept Badge - place above the title inside containerVariants */}
               <motion.div
                 variants={itemVariants}
-                className="flex items-center gap-3 rounded-2xl border border-yellow-500/20 bg-white/5 backdrop-blur-md px-4 py-2"
+                className="flex items-center gap-2 sm:gap-3 rounded-2xl border border-yellow-500/20 bg-white/5 backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2"
               >
                 <img
                   src="/pccoer-logo.png"
                   alt="College Logo"
-                  className="h-12 w-12 sm:h-14 sm:w-14 object-contain drop-shadow-[0_0_8px_rgba(255,215,0,0.9)]"
+                  className="h-9 w-9 sm:h-12 sm:w-12 object-contain drop-shadow-[0_0_8px_rgba(255,215,0,0.9)]"
                 />
                 <div className="flex flex-col text-left leading-tight">
-                  <span className="text-white/90 text-xs sm:text-sm font-bold tracking-wide">
+                  <span className="text-white/90 text-[10px] sm:text-xs md:text-sm font-bold tracking-wide max-w-[280px] sm:max-w-none">
                     Pimpri Chinchwad College of Engineering and Research, Ravet, Pune.
                   </span>
-                  <span className="text-yellow-400/80 text-[10px] sm:text-xs font-semibold uppercase tracking-widest">
+                  <span className="text-yellow-400/80 text-[8px] sm:text-[10px] font-semibold uppercase tracking-widest">
                     Department of Information Technology
                   </span>
                 </div>
               </motion.div>
               {/* Logo / Title animation */}
-              <motion.div variants={itemVariants} className="text-center md:text-left pt-1">
+              <motion.div variants={itemVariants} className="text-center md:text-left mt-3">
                 <h1
-                  className="font-harry-potter text-[3.5rem] leading-[1.1] sm:text-7xl md:text-[110px] lg:text-[125px] text-white select-none italic pt-4 md:leading-tight"
+                  className="font-harry-potter text-3xl leading-[1.1] sm:text-5xl md:text-7xl lg:text-[80px] text-white select-none italic pt-1 md:leading-[1.05]"
                   style={{
                     fontWeight: "bold",
                     textShadow: "0 0 20px rgba(255,215,0,0.6), 0 0 40px rgba(255,215,0,0.4), 0 0 80px rgba(255,215,0,0.2)"
@@ -172,25 +187,25 @@ function Page() {
               {/* Date & Timer */}
               <motion.div
                 variants={itemVariants}
-                className="mb-6 flex flex-col items-center md:items-start px-4 w-full"
+                className="mb-2 md:mb-4 flex flex-col items-center md:items-start px-4 w-full"
               >
-                <span className="inline-block mb-4 rounded-xl border border-yellow-500/30 bg-black/40 px-4 py-2 text-center font-semibold uppercase tracking-[0.08em] text-xs sm:text-sm lg:text-base text-yellow-400 drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]">
+                <span className="inline-block mb-2 md:mb-3 rounded-xl border border-yellow-500/30 bg-black/40 px-3 py-1.5 md:px-4 md:py-2 text-center font-semibold uppercase tracking-[0.08em] text-[10px] sm:text-xs md:text-sm text-yellow-400 drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]">
                   7th - 8th August 2026
                 </span>
 
                 <div className="w-full flex justify-center md:justify-start">
-                  <div className="scale-90 origin-center md:origin-left md:scale-100">
+                  <div className="scale-75 sm:scale-85 md:scale-95 origin-center md:origin-left">
                     <Countdown />
                   </div>
                 </div>
               </motion.div>
 
-              {/* Golden Register & Dashboard Buttons with high click priority */}
-              <motion.div variants={itemVariants} className="relative z-50 flex flex-wrap items-center justify-center md:justify-start gap-4">
+              {/* Golden Register & Login Buttons with high click priority */}
+              <motion.div variants={itemVariants} className="relative z-50 flex flex-wrap items-center justify-center md:justify-start gap-3">
                 <button
                   id="hero-register-btn"
                   onClick={() => setShowRegistrationModal(true)}
-                  className="magical-btn px-8 py-4 rounded-full sm:text-base text-sm tracking-widest flex items-center gap-2 group cursor-pointer"
+                  className="magical-btn px-6 py-3 rounded-full text-xs sm:text-sm tracking-widest flex items-center gap-2 group cursor-pointer"
                 >
                   <span>✦ REGISTER NOW ✦</span>
                   <svg
@@ -207,96 +222,102 @@ function Page() {
                     />
                   </svg>
                 </button>
+                <Link
+                  href="/login"
+                  className="px-6 py-3 rounded-full text-xs sm:text-sm tracking-widest flex items-center justify-center border border-yellow-500/35 bg-black/40 text-yellow-400 hover:bg-yellow-500/10 transition duration-300 font-bold hover:scale-105 shadow-[0_0_15px_rgba(255,215,0,0.1)]"
+                >
+                  ✦ LOGIN ✦
+                </Link>
               </motion.div>
 
               {/* Hero Sponsor Logos Bar */}
               <motion.div
                 variants={itemVariants}
-                className="mt-4 sm:mt-6 flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-6 bg-black/40 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-yellow-500/20"
+                className="mt-2 md:mt-4 flex flex-wrap items-center justify-center md:justify-start gap-2.5 sm:gap-4 bg-black/40 backdrop-blur-md p-2.5 sm:p-3.5 rounded-2xl border border-yellow-500/20"
               >
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-yellow-400">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-yellow-400">
                     Powered By
                   </span>
                   <a
                     href="https://unstop.com/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="bg-white/10 px-3 py-1.5 rounded-xl border border-white/15 flex items-center shadow-inner hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
+                    className="bg-white/10 px-2 py-1 rounded-xl border border-white/15 flex items-center shadow-inner hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
                   >
                     <img
                       src="/Unstop-Logo-Blue-Large.png"
                       alt="Unstop"
-                      className="h-6 sm:h-7 w-auto object-contain brightness-110"
+                      className="h-4 sm:h-5.5 w-auto object-contain brightness-110"
                     />
                   </a>
                 </div>
 
-                <div className="hidden sm:block h-6 w-px bg-yellow-500/20" />
+                <div className="hidden sm:block h-5 w-px bg-yellow-500/20" />
 
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-yellow-200/80">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-yellow-200/80">
                     Sponsors
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <a
                       href="https://wetnjoy.in/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
+                      className="bg-white/10 px-2 py-1 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
                     >
                       <img
                         src="/wetnjoy.webp"
                         alt="Wet n Joy"
-                        className="h-5 sm:h-6 w-auto object-contain"
+                        className="h-3.5 sm:h-5 w-auto object-contain"
                       />
                     </a>
                     <a
                       href="https://befailproof.ai/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
+                      className="bg-white/10 px-2 py-1 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
                     >
                       <img
                         src="/failproof.png"
                         alt="Failproof AI"
-                        className="h-5 sm:h-6 w-auto object-contain"
+                        className="h-3.5 sm:h-5 w-auto object-contain"
                       />
                     </a>
                     <a
                       href="https://dobraindia.com/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
+                      className="bg-white/10 px-2 py-1 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
                     >
                       <img
                         src="/dobra.webp"
                         alt="Dobra"
-                        className="h-5 sm:h-6 w-auto object-contain"
+                        className="h-3.5 sm:h-5 w-auto object-contain"
                       />
                     </a>
                     <a
                       href="https://www.oxyred.in/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
+                      className="bg-white/10 px-2 py-1 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
                     >
                       <img
                         src="/oxyred.jpg"
                         alt="OxyRed"
-                        className="h-5 sm:h-6 w-auto object-contain rounded-md"
+                        className="h-3.5 sm:h-5 w-auto object-contain rounded-md"
                       />
                     </a>
                     <a
                       href="https://theframedwall.com/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
+                      className="bg-white/10 px-2 py-1 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
                     >
                       <img
                         src="/framedwall.jpg"
                         alt="The Framed Wall"
-                        className="h-5 sm:h-6 w-auto object-contain rounded-md"
+                        className="h-3.5 sm:h-5 w-auto object-contain rounded-md"
                       />
                     </a>
                   </div>
