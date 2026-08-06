@@ -27,8 +27,8 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # CONFIGURE THESE BEFORE RUNNING
 # ---------------------------------------------------------------------------
-SENDER_EMAIL  = "inceptia2025@gmail.com"
-APP_PASSWORD  = "rfaiyebbtnneiiuz"   # Google App Password
+SENDER_EMAIL  = ""
+APP_PASSWORD  = ""   # Google App Password
 SITE_URL      = "https://inceptiaitsa.com"       # Change to live URL
 SKIP_TEAMS    = {}                   # Test/placeholder teams to skip
 SEND_DELAY_S  = 1.5                                 # Delay between sends (s)
