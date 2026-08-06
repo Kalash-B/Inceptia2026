@@ -1,0 +1,19 @@
+{
+    "teams": [
+        {
+            "name": "Code Blooded",
+            "domain": "Healthcare",
+            "team": [
+                {
+                    "name": "Tanmay Patil",
+                    "mail": "chandnaniyash569@gmail.com",
+                    "password": "TanmayPatil82",
+                    "token": "TanmayP.",
+                    "position": "Member",
+                    "counter": 0,
+                    "avatar": "/profiles_char/ron.png"
+                }
+            ]
+        }
+    ]
+}
