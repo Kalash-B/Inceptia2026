@@ -24,7 +24,7 @@ const sponsors: Sponsor[] = [
   {
     tier: "gold",
     name: "Wet n Joy",
-    tagline: "Amusement & Water Park Partner",
+    tagline: "Entertainment Partner",
     logo: "/wetnjoy.webp",
     url: "https://wetnjoy.in/",
   },
@@ -45,7 +45,7 @@ const sponsors: Sponsor[] = [
   {
     tier: "gold",
     name: "OxyRed",
-    tagline: "Official Partner",
+    tagline: "Hydration Partner",
     logo: "/oxyred.jpg",
     url: "https://www.oxyred.in/",
   },
@@ -55,6 +55,13 @@ const sponsors: Sponsor[] = [
     tagline: "Decor & Framing Partner",
     logo: "/framedwall.jpg",
     url: "https://theframedwall.com/",
+  },
+  {
+    tier: "gold",
+    name: "Flyhigh Trippers",
+    tagline: "Travel Partner",
+    logo: "/flyhigh trippers.jpeg",
+    url: "https://www.instagram.com/flyhigh_trippers/",
   },
 ];
 

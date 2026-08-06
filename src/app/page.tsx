@@ -112,11 +112,7 @@ function Page() {
 
       <div id="main-scroll-container" className={`relative w-full h-screen overflow-y-scroll scroll-smooth snap-y snap-mandatory bg-surface ${isLoading ? 'overflow-hidden' : ''}`}>
         {/* Floating Navbar */}
-        <header className="fixed top-0 left-0 w-full z-50 px-6 sm:px-12 py-4 flex justify-between items-center bg-transparent pointer-events-none">
-          <div className="font-harry-potter text-2xl text-white tracking-wider drop-shadow-[0_0_10px_rgba(255,215,0,0.4)] select-none pointer-events-auto">
-            INCEPTIA
-          </div>
-        </header>
+        
 
         {/* Background Image (covers all 7 sections and scrolls naturally) */}
         <div className="absolute top-0 left-0 w-full h-[700vh] z-0 pointer-events-none">
@@ -146,7 +142,7 @@ function Page() {
               {/* College & Dept Badge - place above the title inside containerVariants */}
               <motion.div
                 variants={itemVariants}
-                className="flex items-center gap-2 sm:gap-3 rounded-2xl border border-yellow-500/20 bg-white/5 backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2"
+                className="flex items-center gap-2 sm:gap-3 rounded-2xl border border-yellow-500/20 bg-white/5 backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2 mb-8"
               >
                 <img
                   src="/pccoer-logo.png"
