@@ -1,8 +1,9 @@
 import { connect } from '@/dbConfig/dbConfig'
 import Team from '@/models/participant'
 import Elysia from 'elysia'
-import seedData from "@/data/values.json"
-import { requireAdminKey, generateNonce, verifyNonce, requireSessionOrAdminKey, verifyAdminSession } from '@/lib/apiAuth'
+import seedData from "@/data/team.json"
+import participantSeedData from "@/data/values.json"
+import { requireAdminKey, generateNonce, verifyNonce, requireSessionOrAdminKey, verifyAdminSession, requireRegisterKey, verifyRegisterSession } from '@/lib/apiAuth'
 
 // ---------------------------------------------------------------------------
 // GET routes — handled by Elysia (no body parsing needed)
@@ -47,7 +48,9 @@ function serializeMember(teamName: string, domain: string, member: any) {
         token: member.token,
         position: member.position,
         counter: member.counter,
-        avatar: member.avatar || ""
+        avatar: member.avatar || "",
+        checkedIn: member.checkedIn ?? false,
+        checkedInAt: member.checkedInAt ?? null
     }
 }
 
@@ -62,24 +65,32 @@ const app = new Elysia({ prefix: '/api' })
         try {
             await connect()
 
-            // Seed teams from values.json if they don't exist yet
-            for (const teamEntry of (seedData as any).teams) {
-                const exists = await Team.findOne({ name: teamEntry.name })
-                if (!exists) {
-                    await Team.create({
+            const combinedTeams = [
+                ...((participantSeedData as any).teams || []),
+                ...((seedData as any).teams || [])
+            ]
+
+            // Seed or update teams from both values.json and team.json
+            for (const teamEntry of combinedTeams) {
+                const teamMembers = teamEntry.team.map((m: any) => ({
+                    name: m.name,
+                    mail: m.mail.trim().toLowerCase(),
+                    password: m.password,
+                    token: m.token,
+                    position: m.position,
+                    counter: m.counter ?? 0,
+                    avatar: m.avatar || ""
+                }))
+
+                await Team.findOneAndUpdate(
+                    { name: teamEntry.name },
+                    {
                         name: teamEntry.name,
                         domain: teamEntry.domain || "Unknown",
-                        team: teamEntry.team.map((m: any) => ({
-                            name: m.name,
-                            mail: m.mail.trim().toLowerCase(),
-                            password: m.password,
-                            token: m.token,
-                            position: m.position,
-                            counter: m.counter ?? 0,
-                            avatar: m.avatar || ""
-                        }))
-                    })
-                }
+                        team: teamMembers
+                    },
+                    { upsert: true }
+                )
             }
 
             const allTeams = await Team.find({})
@@ -155,6 +166,43 @@ const app = new Elysia({ prefix: '/api' })
         } catch (error: any) {
             set.status = 500
             return { success: false, error: error.message || "Failed to fetch participant" }
+        }
+    })
+    // GET /api/register-login — issues a fresh nonce for the registrar login page
+    .get("/register-login", async ({ set }: any) => {
+        const secret = process.env.AUTH
+        if (!secret) {
+            set.status = 500
+            return { success: false, error: "Server misconfiguration" }
+        }
+        return { nonce: generateNonce(secret) }
+    })
+    // GET /api/register-login/check — validates the register_session cookie
+    .get("/register-login/check", async ({ request, set }: any) => {
+        const err = verifyRegisterSession(request.headers)
+        if (err) {
+            set.status = err.status
+            return err.json()
+        }
+        return { success: true }
+    })
+    // GET /api/checkin — register-key protected: returns all participants with check-in status
+    .get("/checkin", async ({ request, set }: any) => {
+        const authErr = requireRegisterKey(request.headers)
+        if (authErr) {
+            set.status = authErr.status
+            return authErr.json()
+        }
+        try {
+            await connect()
+            const allTeams = await Team.find({})
+            const participants = allTeams.flatMap((t: any) =>
+                t.team.map((m: any) => serializeMember(t.name, t.domain || "Unknown", m))
+            )
+            return { participants }
+        } catch (error: any) {
+            set.status = 500
+            return { error: error.message || "Failed to fetch participants" }
         }
     })
 
@@ -357,6 +405,113 @@ async function handleAdminLoginPost(request: Request): Promise<Response> {
     return new Response(response.body, { status: 200, headers })
 }
 
+async function handleRegisterLoginPost(request: Request): Promise<Response> {
+    const secret = process.env.AUTH
+    const registerPass = process.env.REGISTER_PASS
+    const REGISTER_USERNAME = "Registrar"
+
+    if (!secret || !registerPass) {
+        return json({ success: false, error: "Server misconfiguration" }, 500)
+    }
+
+    let body: { username?: string; password?: string; _nonce?: string }
+    try {
+        body = await request.json()
+    } catch {
+        return json({ success: false, error: "Invalid JSON body" }, 400)
+    }
+
+    const { username, password, _nonce } = body
+
+    const nonceCheck = verifyNonce(_nonce, secret)
+    if (!nonceCheck.valid) {
+        console.warn("[API/register-login] Nonce check failed:", nonceCheck.reason)
+        return json({
+            success: false,
+            error: "Forbidden: Invalid or expired request token. Please refresh the page and try again."
+        }, 403)
+    }
+
+    if (!username || !password) {
+        return json({ success: false, error: "Missing username or password" }, 400)
+    }
+
+    if (username !== REGISTER_USERNAME) {
+        return json({ success: false, error: "Invalid credentials" }, 401)
+    }
+
+    if (password !== registerPass) {
+        return json({ success: false, error: "Invalid credentials" }, 401)
+    }
+
+    const { createHmac } = await import("crypto")
+    const ts = String(Date.now())
+    const sig = createHmac("sha256", secret).update(`register.${ts}`).digest("hex")
+    const sessionToken = `${ts}.${sig}`
+
+    const response = json({ success: true, message: "Registrar authentication successful." })
+    const headers = new Headers(response.headers)
+    headers.set(
+        "Set-Cookie",
+        `register_session=${sessionToken}; Path=/; Max-Age=${8 * 60 * 60}; HttpOnly; SameSite=Strict`
+    )
+
+    return new Response(response.body, { status: 200, headers })
+}
+
+async function handleCheckinPost(request: Request): Promise<Response> {
+    const sessionErr = verifyRegisterSession(request.headers)
+    if (sessionErr) return sessionErr
+
+    const authErr = requireRegisterKey(request.headers)
+    if (authErr) return authErr
+
+    let body: { token?: string }
+    try {
+        body = await request.json()
+    } catch {
+        return json({ success: false, error: "Invalid JSON body" }, 400)
+    }
+
+    const { token } = body
+    if (!token) {
+        return json({ success: false, error: "Missing token" }, 400)
+    }
+
+    try {
+        await connect()
+        const result = await findMemberByToken(token)
+        if (!result) {
+            return json({ success: false, error: "Participant not found in registry" }, 404)
+        }
+
+        const { teamDoc, member } = result
+
+        if (member.checkedIn) {
+            return json({
+                success: false,
+                status: 'already_checked_in',
+                message: `${member.name} was already checked in at ${new Date(member.checkedInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })}`,
+                participant: serializeMember(teamDoc.name, teamDoc.domain || "Unknown", member)
+            })
+        }
+
+        member.checkedIn = true
+        member.checkedInAt = new Date()
+        await teamDoc.save()
+
+        return json({
+            success: true,
+            status: 'ok',
+            message: `${member.name} checked in successfully!`,
+            participant: serializeMember(teamDoc.name, teamDoc.domain || "Unknown", member)
+        })
+    } catch (error: any) {
+        console.error("[API] Error processing check-in:", error)
+        return json({ success: false, error: error.message || "Failed to process check-in" }, 500)
+    }
+}
+
 // Route POST requests manually — no Elysia involvement
 export async function POST(request: Request): Promise<Response> {
     const url = new URL(request.url)
@@ -365,6 +520,8 @@ export async function POST(request: Request): Promise<Response> {
     if (pathname === '/api/scan') return handleScanPost(request)
     if (pathname === '/api/login') return handleLoginPost(request)
     if (pathname === '/api/admin-login') return handleAdminLoginPost(request)
+    if (pathname === '/api/register-login') return handleRegisterLoginPost(request)
+    if (pathname === '/api/checkin') return handleCheckinPost(request)
 
     return json({ error: "Not found" }, 404)
 }
