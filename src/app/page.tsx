@@ -111,29 +111,6 @@ function Page() {
       </AnimatePresence>
 
       <div id="main-scroll-container" className={`relative w-full h-screen overflow-y-scroll scroll-smooth snap-y snap-mandatory bg-surface ${isLoading ? 'overflow-hidden' : ''}`}>
-        {/* Floating Navbar */}
-        <header className="fixed top-0 left-0 w-full z-50 px-6 sm:px-12 py-4 flex justify-between items-center bg-black/40 backdrop-blur-md border-b border-amber-500/20 pointer-events-auto">
-          <Link href="/" className="font-harry-potter text-2xl text-amber-300 tracking-wider drop-shadow-[0_0_10px_rgba(255,215,0,0.6)] select-none hover:text-white transition-colors">
-            INCEPTIA 2K26
-          </Link>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/timer"
-              className="px-4 py-1.5 rounded-full border border-amber-500/40 bg-amber-950/60 text-amber-300 text-xs font-serif hover:bg-amber-500/20 hover:border-amber-400 transition-all flex items-center gap-1.5 shadow-[0_0_10px_rgba(255,215,0,0.2)]"
-            >
-              <span>⏳</span>
-              <span className="font-semibold tracking-wider">TIME TURNER</span>
-            </Link>
-
-            <Link
-              href="/login"
-              className="magical-btn px-4 py-1.5 rounded-full text-xs tracking-wider"
-            >
-              LOGIN
-            </Link>
-          </div>
-        </header>
 
         {/* Background Image (covers all 7 sections and scrolls naturally) */}
         <div className="absolute top-0 left-0 w-full h-[700vh] z-0 pointer-events-none">
@@ -163,7 +140,7 @@ function Page() {
               {/* College & Dept Badge - place above the title inside containerVariants */}
               <motion.div
                 variants={itemVariants}
-                className="flex items-center gap-2 sm:gap-3 rounded-2xl border border-yellow-500/20 bg-white/5 backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2"
+                className="flex items-center gap-2 sm:gap-3 rounded-2xl border border-yellow-500/20 bg-white/5 backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2 mb-8"
               >
                 <img
                   src="/pccoer-logo.png"
@@ -229,14 +206,6 @@ function Page() {
                       d="M13 5l7 7-7 7M5 5l7 7-7 7"
                     />
                   </svg>
-                </Link>
-
-                <Link
-                  href="/timer"
-                  className="px-6 py-3 rounded-full border-2 border-amber-400/80 bg-gradient-to-r from-amber-950/80 to-yellow-950/80 text-amber-300 font-bold text-xs sm:text-sm tracking-widest flex items-center gap-2 group hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,215,0,0.3)]"
-                >
-                  <span>⏳ MAGICAL TIMER</span>
-                  <span>⚡</span>
                 </Link>
               </motion.div>
             </motion.div>
