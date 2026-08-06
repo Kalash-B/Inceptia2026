@@ -32,6 +32,14 @@ const teamMemberSchema = new mongoose.Schema({
     avatar: {
         type: String,
         default: ''
+    },
+    checkedIn: {
+        type: Boolean,
+        default: false
+    },
+    checkedInAt: {
+        type: Date,
+        default: null
     }
 })
 

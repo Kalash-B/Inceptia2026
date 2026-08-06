@@ -226,14 +226,118 @@ export function verifyAdminSession(headers: Headers): Response | null {
   return null // session is valid
 }
 
-// ---------------------------------------------------------------------------
-// Utility: parse Cookie header string into a key→value map
-// ---------------------------------------------------------------------------
-
 function parseCookies(cookieHeader: string): Record<string, string> {
   return cookieHeader.split(";").reduce<Record<string, string>>((acc, part) => {
     const [key, ...rest] = part.trim().split("=")
     if (key) acc[key.trim()] = rest.join("=").trim()
     return acc
   }, {})
+}
+
+// ---------------------------------------------------------------------------
+// Register-key guard
+// Used by /checkin (GET + POST) — registrar scanner endpoint.
+// The key lives in process.env.NEXT_PUBLIC_REGISTER_KEY and is sent via the
+// X-Register-Key header.
+// ---------------------------------------------------------------------------
+
+export function requireRegisterKey(headers: Headers): Response | null {
+  const key = headers.get("x-register-key")
+  const expected = process.env.NEXT_PUBLIC_REGISTER_KEY
+
+  if (!expected) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Server misconfiguration: REGISTER_KEY secret not set" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  if (!key) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized: X-Register-Key header required" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  const keyBuf = Buffer.from(key)
+  const expBuf = Buffer.from(expected)
+  const match =
+    keyBuf.length === expBuf.length &&
+    timingSafeEqual(keyBuf, expBuf)
+
+  if (!match) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Forbidden: Invalid register key" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// Register session guard
+// Used by /register-login/check and POST /checkin — verifies the
+// register_session cookie set by POST /api/register-login.
+// Cookie format: "<timestamp>.<hmac-hex>" signed with AUTH + "register." prefix.
+// ---------------------------------------------------------------------------
+
+export function verifyRegisterSession(headers: Headers): Response | null {
+  const secret = process.env.AUTH
+  if (!secret) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Server misconfiguration: AUTH secret not set" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  const cookieHeader = headers.get("cookie") || ""
+  const cookies = parseCookies(cookieHeader)
+  const sessionToken = cookies["register_session"]
+
+  if (!sessionToken) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized: Register session required" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  const parts = sessionToken.split(".")
+  if (parts.length !== 2) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized: Malformed register session" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  const [ts, sig] = parts
+  const timestamp = Number(ts)
+
+  if (isNaN(timestamp)) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized: Invalid session timestamp" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  const age = Date.now() - timestamp
+  if (age < 0 || age > ADMIN_SESSION_MAX_AGE_MS) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized: Register session expired" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  const expectedSig = createHmac("sha256", secret).update(`register.${ts}`).digest("hex")
+  const sigBuf = Buffer.from(sig, "hex")
+  const expBuf = Buffer.from(expectedSig, "hex")
+
+  if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Forbidden: Invalid register session signature" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  return null
 }
