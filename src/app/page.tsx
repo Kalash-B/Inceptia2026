@@ -103,7 +103,6 @@ const domainList: DomainItem[] = [
 
 function Page() {
   const [isLoading, setIsLoading] = useState(true);
-  const [showRegistrationModal, setShowRegistrationModal] = useState(false);
 
   return (
     <>
@@ -116,14 +115,6 @@ function Page() {
         <header className="fixed top-0 left-0 w-full z-50 px-6 sm:px-12 py-4 flex justify-between items-center bg-transparent pointer-events-none">
           <div className="font-harry-potter text-2xl text-white tracking-wider drop-shadow-[0_0_10px_rgba(255,215,0,0.4)] select-none pointer-events-auto">
             INCEPTIA
-          </div>
-          <div className="pointer-events-auto">
-            <Link
-              href="/login"
-              className="px-6 py-2 rounded-full border border-yellow-500/35 bg-black/60 text-sm font-bold text-yellow-400 hover:bg-yellow-500/15 hover:scale-105 transition-all duration-300 backdrop-blur-md shadow-[0_0_15px_rgba(255,215,0,0.1)]"
-            >
-              ✦ LOGIN ✦
-            </Link>
           </div>
         </header>
 
@@ -200,14 +191,14 @@ function Page() {
                 </div>
               </motion.div>
 
-              {/* Golden Register & Login Buttons with high click priority */}
+              {/* Golden Login Button with high click priority */}
               <motion.div variants={itemVariants} className="relative z-50 flex flex-wrap items-center justify-center md:justify-start gap-3">
-                <button
-                  id="hero-register-btn"
-                  onClick={() => setShowRegistrationModal(true)}
+                <Link
+                  id="hero-login-btn"
+                  href="/login"
                   className="magical-btn px-6 py-3 rounded-full text-xs sm:text-sm tracking-widest flex items-center gap-2 group cursor-pointer"
                 >
-                  <span>✦ REGISTER NOW ✦</span>
+                  <span>✦ LOGIN ✦</span>
                   <svg
                     className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-2"
                     fill="none"
@@ -221,216 +212,10 @@ function Page() {
                       d="M13 5l7 7-7 7M5 5l7 7-7 7"
                     />
                   </svg>
-                </button>
-                <Link
-                  href="/login"
-                  className="px-6 py-3 rounded-full text-xs sm:text-sm tracking-widest flex items-center justify-center border border-yellow-500/35 bg-black/40 text-yellow-400 hover:bg-yellow-500/10 transition duration-300 font-bold hover:scale-105 shadow-[0_0_15px_rgba(255,215,0,0.1)]"
-                >
-                  ✦ LOGIN ✦
                 </Link>
-              </motion.div>
-
-              {/* Hero Sponsor Logos Bar */}
-              <motion.div
-                variants={itemVariants}
-                className="mt-2 md:mt-4 flex flex-wrap items-center justify-center md:justify-start gap-2.5 sm:gap-4 bg-black/40 backdrop-blur-md p-2.5 sm:p-3.5 rounded-2xl border border-yellow-500/20"
-              >
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-yellow-400">
-                    Powered By
-                  </span>
-                  <a
-                    href="https://unstop.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-white/10 px-2 py-1 rounded-xl border border-white/15 flex items-center shadow-inner hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
-                  >
-                    <img
-                      src="/Unstop-Logo-Blue-Large.png"
-                      alt="Unstop"
-                      className="h-4 sm:h-5.5 w-auto object-contain brightness-110"
-                    />
-                  </a>
-                </div>
-
-                <div className="hidden sm:block h-5 w-px bg-yellow-500/20" />
-
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider text-yellow-200/80">
-                    Sponsors
-                  </span>
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                    <a
-                      href="https://wetnjoy.in/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-white/10 px-2 py-1 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
-                    >
-                      <img
-                        src="/wetnjoy.webp"
-                        alt="Wet n Joy"
-                        className="h-3.5 sm:h-5 w-auto object-contain"
-                      />
-                    </a>
-                    <a
-                      href="https://befailproof.ai/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-white/10 px-2 py-1 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
-                    >
-                      <img
-                        src="/failproof.png"
-                        alt="Failproof AI"
-                        className="h-3.5 sm:h-5 w-auto object-contain"
-                      />
-                    </a>
-                    <a
-                      href="https://dobraindia.com/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-white/10 px-2 py-1 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
-                    >
-                      <img
-                        src="/dobra.webp"
-                        alt="Dobra"
-                        className="h-3.5 sm:h-5 w-auto object-contain"
-                      />
-                    </a>
-                    <a
-                      href="https://www.oxyred.in/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-white/10 px-2 py-1 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
-                    >
-                      <img
-                        src="/oxyred.jpg"
-                        alt="OxyRed"
-                        className="h-3.5 sm:h-5 w-auto object-contain rounded-md"
-                      />
-                    </a>
-                    <a
-                      href="https://theframedwall.com/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-white/10 px-2 py-1 rounded-xl border border-white/15 flex items-center hover:scale-105 hover:bg-white/20 transition-all cursor-pointer"
-                    >
-                      <img
-                        src="/framedwall.jpg"
-                        alt="The Framed Wall"
-                        className="h-3.5 sm:h-5 w-auto object-contain rounded-md"
-                      />
-                    </a>
-                  </div>
-                </div>
               </motion.div>
             </motion.div>
           </section>
-          <AnimatePresence>
-            {showRegistrationModal && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
-              >
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  className="w-full max-w-3xl rounded-3xl border border-yellow-500/30 bg-[#120d22]/95 backdrop-blur-xl py-6 px-4 sm:py-8 sm:px-6 shadow-[0_0_60px_rgba(255,215,0,0.2)] max-h-[90vh] overflow-y-auto"
-                >
-                  {/* Heading */}
-                  <div className="flex justify-between items-center mb-6 sm:mb-8 sticky top-0 bg-[#120d22]/90 backdrop-blur-md pb-2 z-10 -mt-2">
-                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-yellow-400">
-                      Registration Details
-                    </h2>
-
-                    <button
-                      id="modal-close-btn"
-                      onClick={() => setShowRegistrationModal(false)}
-                      className="text-3xl text-white hover:text-yellow-400 p-1"
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  {/* Registration Fee */}
-                  <div className="mb-8">
-                    <h3 className="text-xl font-semibold text-yellow-300 mb-3">
-                      💰 Registration Fee
-                    </h3>
-
-                    <div className="rounded-xl bg-black/30 border border-yellow-500/20 p-2 text-lg text-gray-200">
-                      ₹549 per person
-                      <br />
-                      <span className="text-sm text-yellow-300">
-                        Applicable only for teams shortlisted for Round 2
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Round 1 */}
-                  <div className="mb-8">
-                    <h3 className="sm:text-2xl text-xl text-yellow-300 mb-2">
-                      🪄 Round 1 - Idea Submission
-                    </h3>
-
-                    <p className="text-gray-300 mb-4">
-                      Submit your project idea in the form of a PowerPoint Presentation
-                      (PPT). Teams will be evaluated on:
-                    </p>
-
-                    <ul className="space-y-2 text-gray-200 list-disc pl-6">
-                      <li>Innovation & Originality</li>
-                      <li>Problem Statement</li>
-                      <li>Technical Feasibility</li>
-                      <li>Potential Impact</li>
-                      <li>Presentation Quality</li>
-                    </ul>
-
-                    <p className="mt-4 text-yellow-300 font-medium">
-                      Only shortlisted teams will advance to Round 2.
-                    </p>
-                  </div>
-
-                  {/* Round 2 */}
-                  <div className="mb-8">
-                    <h3 className="sm:text-2xl text-xl text-yellow-300 mb-3">
-                      ⚡ Round 2 - 24-Hour Hackathon
-                    </h3>
-
-                    <ul className="space-y-3 text-gray-200 list-disc pl-6">
-                      <li>Build and present a functional prototype.</li>
-                      <li>Registration fee is payable only after selection.</li>
-                      <li>Projects will be evaluated by renowned industry experts.</li>
-                      <li>Outstanding performers may receive internship opportunities.</li>
-                    </ul>
-                  </div>
-
-                  {/* Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-4 justify-end">
-                    <button
-                      id="modal-cancel-btn"
-                      onClick={() => setShowRegistrationModal(false)}
-                      className="px-6 py-3 rounded-xl border border-gray-600 text-white hover:bg-white/10"
-                    >
-                      Close
-                    </button>
-
-                    <a
-                      id="modal-proceed-link"
-                      href="https://unstop.com/o/KxwXi86?utm_medium=Share&utm_source=online_coding_challenge&utm_campaign=Logged_out_user"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="magical-btn px-8 py-3 rounded-xl text-center"
-                    >
-                      ✦ Proceed to Registration ✦
-                    </a>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
 
         {/* 2. About Section */}
