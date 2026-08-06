@@ -70,27 +70,51 @@ const app = new Elysia({ prefix: '/api' })
                 ...((seedData as any).teams || [])
             ]
 
-            // Seed or update teams from both values.json and team.json
+            // Seed ONLY — never overwrite existing counter/checkedIn data.
+            // For each team in the seed files:
+            //   • If the team doesn't exist yet, insert it with the seed members.
+            //   • If the team already exists, add any brand-new members (by token)
+            //     but leave all existing members' counter/checkedIn values untouched.
             for (const teamEntry of combinedTeams) {
-                const teamMembers = teamEntry.team.map((m: any) => ({
-                    name: m.name,
-                    mail: m.mail.trim().toLowerCase(),
-                    password: m.password,
-                    token: m.token,
-                    position: m.position,
-                    counter: m.counter ?? 0,
-                    avatar: m.avatar || ""
-                }))
+                const existingTeam = await Team.findOne({ name: teamEntry.name })
 
-                await Team.findOneAndUpdate(
-                    { name: teamEntry.name },
-                    {
+                if (!existingTeam) {
+                    // Team is brand-new — insert with full seed data
+                    const teamMembers = teamEntry.team.map((m: any) => ({
+                        name: m.name,
+                        mail: m.mail.trim().toLowerCase(),
+                        password: m.password,
+                        token: m.token,
+                        position: m.position,
+                        counter: m.counter ?? 0,
+                        avatar: m.avatar || ""
+                    }))
+                    await Team.create({
                         name: teamEntry.name,
                         domain: teamEntry.domain || "Unknown",
                         team: teamMembers
-                    },
-                    { upsert: true }
-                )
+                    })
+                } else {
+                    // Team exists — only add members whose token is not already present
+                    const existingTokens = new Set(
+                        existingTeam.team.map((m: any) => m.token)
+                    )
+                    const newMembers = teamEntry.team
+                        .filter((m: any) => !existingTokens.has(m.token))
+                        .map((m: any) => ({
+                            name: m.name,
+                            mail: m.mail.trim().toLowerCase(),
+                            password: m.password,
+                            token: m.token,
+                            position: m.position,
+                            counter: m.counter ?? 0,
+                            avatar: m.avatar || ""
+                        }))
+                    if (newMembers.length > 0) {
+                        existingTeam.team.push(...newMembers)
+                        await existingTeam.save()
+                    }
+                }
             }
 
             const allTeams = await Team.find({})
