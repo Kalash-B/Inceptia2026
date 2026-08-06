@@ -3,28 +3,69 @@
 import React, { useState } from "react";
 
 interface Sponsor {
-  tier: "title" | "gold";
+  tier: "poweredBy" | "gold";
   name: string;
   tagline?: string;
+  logo?: string;
+  url?: string;
 }
 
 const sponsors: Sponsor[] = [
-  // Title Sponsor
-  { tier: "title", name: "TBA", tagline: "To Be Announced" },
+  // Powered By
+  {
+    tier: "poweredBy",
+    name: "Unstop",
+    tagline: "Official Platform Partner",
+    logo: "/Unstop-Logo-Blue-Large.png",
+    url: "https://unstop.com/",
+  },
 
-  // Gold Sponsors
-  { tier: "gold", name: "TBA" },
-  { tier: "gold", name: "TBA" },
+  // Other Sponsors
+  {
+    tier: "gold",
+    name: "Wet n Joy",
+    tagline: "Amusement & Water Park Partner",
+    logo: "/wetnjoy.webp",
+    url: "https://wetnjoy.in/",
+  },
+  {
+    tier: "gold",
+    name: "Failproof AI",
+    tagline: "AI & Innovation Partner",
+    logo: "/failproof.png",
+    url: "https://befailproof.ai/",
+  },
+  {
+    tier: "gold",
+    name: "Dobra",
+    tagline: "Snack & Refreshment Partner",
+    logo: "/dobra.webp",
+    url: "https://dobraindia.com/",
+  },
+  {
+    tier: "gold",
+    name: "OxyRed",
+    tagline: "Official Partner",
+    logo: "/oxyred.jpg",
+    url: "https://www.oxyred.in/",
+  },
+  {
+    tier: "gold",
+    name: "The Framed Wall",
+    tagline: "Decor & Framing Partner",
+    logo: "/framedwall.jpg",
+    url: "https://theframedwall.com/",
+  },
 ];
 
 const tierConfig = {
-  title: {
+  poweredBy: {
     cardClass:
       "col-span-full bg-gradient-to-br from-yellow-500/20 via-indigo-950/60 to-indigo-950/80 backdrop-blur-md border-t-2 border-primary-container rounded-2xl shadow-[0_0_60px_rgba(255,215,0,0.15)] hover:shadow-[0_0_80px_rgba(255,215,0,0.25)] transition-all duration-500 group",
-    height: "min-h-[200px]",
+    height: "min-h-[220px]",
     nameClass:
-      "text-4xl font-harry-potter text-primary drop-shadow-[0_0_12px_rgba(255,215,0,0.5)]",
-    taglineClass: "text-base text-on-surface-variant mt-2",
+      "text-3xl sm:text-4xl font-harry-potter text-primary drop-shadow-[0_0_12px_rgba(255,215,0,0.5)]",
+    taglineClass: "text-base text-on-surface-variant mt-1",
     glowColor: "rgba(255,215,0,0.12)",
     iconSize: "w-20 h-20",
     iconBg: "bg-yellow-400/10 border border-yellow-400/30",
@@ -34,9 +75,9 @@ const tierConfig = {
   gold: {
     cardClass:
       "bg-gradient-to-br from-yellow-400/10 via-indigo-950/50 to-indigo-950/70 backdrop-blur-md border-t-2 border-yellow-400/60 rounded-xl shadow-[0_0_35px_rgba(255,215,0,0.10)] hover:shadow-[0_0_50px_rgba(255,215,0,0.20)] transition-all duration-500 group",
-    height: "min-h-[150px]",
+    height: "min-h-[180px]",
     nameClass: "text-2xl font-bold text-yellow-200",
-    taglineClass: "",
+    taglineClass: "text-sm text-yellow-200/70 mt-1",
     glowColor: "rgba(255,215,0,0.08)",
     iconSize: "w-16 h-16",
     iconBg: "bg-yellow-400/10 border border-yellow-400/20",
@@ -48,7 +89,7 @@ function SponsorCard({ sponsor }: { sponsor: Sponsor }) {
   const [hovered, setHovered] = useState(false);
   const config = tierConfig[sponsor.tier];
 
-  return (
+  const cardContent = (
     <div
       className={`relative flex flex-col items-center justify-center p-8 text-center cursor-pointer ${config.cardClass} ${config.height}`}
       onMouseEnter={() => setHovered(true)}
@@ -80,34 +121,44 @@ function SponsorCard({ sponsor }: { sponsor: Sponsor }) {
         />
       </div>
 
-      {/* Title badge */}
-      {sponsor.tier === "title" && (
+      {/* Powered By badge */}
+      {sponsor.tier === "poweredBy" && (
         <span className="absolute top-4 right-4 text-xs uppercase tracking-widest font-semibold text-primary border border-primary/30 rounded-full px-3 py-1 bg-indigo-950/60">
-          ✦ Title Sponsor
+          ✦ Powered By
         </span>
       )}
 
-      {/* Icon + Name */}
+      {/* Icon/Logo + Name */}
       <div className="relative z-10 flex flex-col items-center gap-3">
-        <div
-          className={`flex items-center justify-center rounded-full mb-2 transition-transform duration-300 ${hovered ? "scale-110" : "scale-100"
-            } ${config.iconSize} ${config.iconBg}`}
-        >
-          {/* Wand / sparkle SVG icon */}
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            className={config.svgClass}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
+        {sponsor.logo ? (
+          <div className="flex items-center justify-center p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 max-w-[280px] w-full min-h-[90px] transition-transform duration-300 group-hover:scale-105">
+            <img
+              src={sponsor.logo}
+              alt={sponsor.name}
+              className="max-h-16 max-w-full w-auto object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]"
             />
-          </svg>
-        </div>
+          </div>
+        ) : (
+          <div
+            className={`flex items-center justify-center rounded-full mb-2 transition-transform duration-300 ${
+              hovered ? "scale-110" : "scale-100"
+            } ${config.iconSize} ${config.iconBg}`}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              className={config.svgClass}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
+              />
+            </svg>
+          </div>
+        )}
 
         <h4 className={config.nameClass}>{sponsor.name}</h4>
         {sponsor.tagline && (
@@ -116,10 +167,25 @@ function SponsorCard({ sponsor }: { sponsor: Sponsor }) {
       </div>
     </div>
   );
+
+  if (sponsor.url) {
+    return (
+      <a
+        href={sponsor.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block group focus:outline-none"
+      >
+        {cardContent}
+      </a>
+    );
+  }
+
+  return cardContent;
 }
 
 export default function SponsorsSection() {
-  const titleSponsors = sponsors.filter((s) => s.tier === "title");
+  const poweredBySponsors = sponsors.filter((s) => s.tier === "poweredBy");
   const goldSponsors = sponsors.filter((s) => s.tier === "gold");
 
   return (
@@ -147,24 +213,24 @@ export default function SponsorsSection() {
           </div>
         </div>
 
-        {/* ── Title Sponsor ── */}
+        {/* ── Powered By ── */}
         <div className="mb-10">
           <p className="text-center text-xs uppercase tracking-[0.3em] text-primary/60 font-semibold mb-5">
-            — Title Sponsor —
+            — Powered By —
           </p>
           <div className="grid grid-cols-1">
-            {titleSponsors.map((s, idx) => (
+            {poweredBySponsors.map((s, idx) => (
               <SponsorCard key={`${s.name}-${idx}`} sponsor={s} />
             ))}
           </div>
         </div>
 
-        {/* ── Gold Sponsors ── */}
+        {/* ── Other Sponsors ── */}
         <div>
           <p className="text-center text-xs uppercase tracking-[0.3em] text-yellow-400/60 font-semibold mb-5">
-            — Gold Sponsors —
+            — Our Sponsors —
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {goldSponsors.map((s, idx) => (
               <SponsorCard key={`${s.name}-${idx}`} sponsor={s} />
             ))}
