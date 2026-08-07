@@ -1,8 +1,10 @@
 import { connect } from '@/dbConfig/dbConfig'
 import Team from '@/models/participant'
+import Timer from '@/models/timer'
 import Elysia from 'elysia'
 import seedData from "@/data/team.json"
 import participantSeedData from "@/data/values.json"
+import facultySeedData from "@/data/faculty.json"
 import { requireAdminKey, generateNonce, verifyNonce, requireSessionOrAdminKey, verifyAdminSession, requireRegisterKey, verifyRegisterSession } from '@/lib/apiAuth'
 
 // ---------------------------------------------------------------------------
@@ -65,9 +67,14 @@ const app = new Elysia({ prefix: '/api' })
         try {
             await connect()
 
+            const facultyTeams = Array.isArray(facultySeedData)
+                ? [{ name: "Faculty", domain: "Faculty", team: facultySeedData }]
+                : (((facultySeedData as any).teams || []))
+
             const combinedTeams = [
                 ...((participantSeedData as any).teams || []),
-                ...((seedData as any).teams || [])
+                ...((seedData as any).teams || []),
+                ...facultyTeams
             ]
 
             // Seed ONLY — never overwrite existing counter/checkedIn data.
@@ -82,7 +89,7 @@ const app = new Elysia({ prefix: '/api' })
                     // Team is brand-new — insert with full seed data
                     const teamMembers = teamEntry.team.map((m: any) => ({
                         name: m.name,
-                        mail: m.mail.trim().toLowerCase(),
+                        mail: (m.mail || m.email || "").trim().toLowerCase(),
                         password: m.password,
                         token: m.token,
                         position: m.position,
@@ -103,7 +110,7 @@ const app = new Elysia({ prefix: '/api' })
                         .filter((m: any) => !existingTokens.has(m.token))
                         .map((m: any) => ({
                             name: m.name,
-                            mail: m.mail.trim().toLowerCase(),
+                            mail: (m.mail || m.email || "").trim().toLowerCase(),
                             password: m.password,
                             token: m.token,
                             position: m.position,
@@ -227,6 +234,52 @@ const app = new Elysia({ prefix: '/api' })
         } catch (error: any) {
             set.status = 500
             return { error: error.message || "Failed to fetch participants" }
+        }
+    })
+    // GET /api/timer — returns global server timer state synced with server clock
+    .get("/timer", async ({ set }: any) => {
+        try {
+            await connect()
+            const timer = await Timer.findOne({ name: 'main_24h_timer' })
+            const now = Date.now()
+
+            if (!timer || !timer.isRunning || !timer.endTime) {
+                return {
+                    success: true,
+                    serverTime: now,
+                    isRunning: false,
+                    startTime: null,
+                    endTime: null,
+                    remainingMs: 24 * 60 * 60 * 1000
+                }
+            }
+
+            const endMs = new Date(timer.endTime).getTime()
+            const remainingMs = Math.max(0, endMs - now)
+            const isStillRunning = remainingMs > 0
+
+            if (!isStillRunning && timer.isRunning) {
+                timer.isRunning = false
+                await timer.save()
+            }
+
+            return {
+                success: true,
+                serverTime: now,
+                isRunning: isStillRunning,
+                startTime: timer.startTime,
+                endTime: timer.endTime,
+                remainingMs
+            }
+        } catch (error: any) {
+            console.error("[API/timer] Error fetching timer:", error)
+            return {
+                success: true,
+                serverTime: Date.now(),
+                isRunning: false,
+                remainingMs: 24 * 60 * 60 * 1000,
+                error: error.message
+            }
         }
     })
 
@@ -536,6 +589,74 @@ async function handleCheckinPost(request: Request): Promise<Response> {
     }
 }
 
+async function handleTimerPost(request: Request): Promise<Response> {
+    let body: { action?: string; durationMs?: number }
+    try {
+        body = await request.json()
+    } catch {
+        body = {}
+    }
+
+    const { action } = body
+    const durationMs = body.durationMs || 24 * 60 * 60 * 1000
+
+    try {
+        await connect()
+        let timer = await Timer.findOne({ name: 'main_24h_timer' })
+
+        if (action === 'start') {
+            const now = new Date()
+            const endTime = new Date(now.getTime() + durationMs)
+
+            if (!timer) {
+                timer = new Timer({
+                    name: 'main_24h_timer',
+                    startTime: now,
+                    endTime,
+                    durationMs,
+                    isRunning: true
+                })
+            } else {
+                timer.startTime = now
+                timer.endTime = endTime
+                timer.durationMs = durationMs
+                timer.isRunning = true
+            }
+            await timer.save()
+
+            return json({
+                success: true,
+                message: "Timer started successfully",
+                serverTime: now.getTime(),
+                isRunning: true,
+                startTime: timer.startTime,
+                endTime: timer.endTime,
+                remainingMs: durationMs
+            })
+        } else if (action === 'reset') {
+            if (timer) {
+                timer.startTime = null
+                timer.endTime = null
+                timer.isRunning = false
+                await timer.save()
+            }
+
+            return json({
+                success: true,
+                message: "Timer reset successfully",
+                serverTime: Date.now(),
+                isRunning: false,
+                remainingMs: durationMs
+            })
+        }
+
+        return json({ success: false, error: "Invalid action" }, 400)
+    } catch (error: any) {
+        console.error("[API/timer] Error processing timer post:", error)
+        return json({ success: false, error: error.message || "Failed to update timer" }, 500)
+    }
+}
+
 // Route POST requests manually — no Elysia involvement
 export async function POST(request: Request): Promise<Response> {
     const url = new URL(request.url)
@@ -546,6 +667,7 @@ export async function POST(request: Request): Promise<Response> {
     if (pathname === '/api/admin-login') return handleAdminLoginPost(request)
     if (pathname === '/api/register-login') return handleRegisterLoginPost(request)
     if (pathname === '/api/checkin') return handleCheckinPost(request)
+    if (pathname === '/api/timer') return handleTimerPost(request)
 
     return json({ error: "Not found" }, 404)
 }

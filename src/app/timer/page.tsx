@@ -1,196 +1,265 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 
-// Rich, distinct Hogwarts house color themes with calm ambient glows
-const AUTOMATED_THEMES = [
-  {
-    name: "Gryffindor",
-    accent: "#ffd700",
-    glow: "rgba(255, 215, 0, 0.45)",
-    cardBg: "bg-gradient-to-b from-[#2d0000]/95 via-[#1a0000]/95 to-[#0a0000]/95",
-    border: "border-amber-500/50",
-    bg: "from-[#280000] via-[#120000] to-[#050000]",
-  },
-  {
-    name: "Ravenclaw",
-    accent: "#38bdf8",
-    glow: "rgba(56, 189, 248, 0.45)",
-    cardBg: "bg-gradient-to-b from-[#001736]/95 via-[#000a1c]/95 to-[#00040d]/95",
-    border: "border-sky-500/50",
-    bg: "from-[#001c40] via-[#000d21] to-[#00050e]",
-  },
-  {
-    name: "Slytherin",
-    accent: "#34d399",
-    glow: "rgba(52, 211, 153, 0.45)",
-    cardBg: "bg-gradient-to-b from-[#002b1a]/95 via-[#00140c]/95 to-[#000704]/95",
-    border: "border-emerald-500/50",
-    bg: "from-[#00331f] via-[#00170e] to-[#000805]",
-  },
-  {
-    name: "Hufflepuff",
-    accent: "#fbbf24",
-    glow: "rgba(251, 191, 36, 0.45)",
-    cardBg: "bg-gradient-to-b from-[#301f00]/95 via-[#180f00]/95 to-[#0a0600]/95",
-    border: "border-yellow-500/50",
-    bg: "from-[#362300] via-[#1a1100] to-[#080500]",
-  },
-];
+const TOTAL_24_HOURS_MS = 24 * 60 * 60 * 1000;
+const STORAGE_END_KEY = "inceptia_24h_timer_end_time";
 
-export default function HarryPotterTimer() {
-  // Automated 12-second calm color cycling theme index
-  const [themeIndex, setThemeIndex] = useState(0);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+export default function InceptiaTimer() {
+  const [isClient, setIsClient] = useState(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Admin login credentials state
+  const [creds, setCreds] = useState({ username: "", password: "" });
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [nonce, setNonce] = useState<string | null>(null);
 
   // Time state (milliseconds)
-  const [totalMs, setTotalMs] = useState(25 * 60 * 1000);
-  const [remainingMs, setRemainingMs] = useState(25 * 60 * 1000);
+  const [remainingMs, setRemainingMs] = useState(TOTAL_24_HOURS_MS);
   const [isRunning, setIsRunning] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Customization modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [inputH, setInputH] = useState(0);
-  const [inputM, setInputM] = useState(25);
-  const [inputS, setInputS] = useState(0);
+  // Server synchronization refs
+  const targetEndMsRef = useRef<number | null>(null);
+  const clockOffsetRef = useRef<number>(0);
 
-  // Reference for timestamp tracking
-  const targetEndRef = useRef<number | null>(null);
-
-  const theme = AUTOMATED_THEMES[themeIndex];
-
-  // -------------------------------------------------------------
-  // CALM, SLOW AUTOMATIC GRADIENT ROTATION (EVERY 12 SECONDS)
-  // -------------------------------------------------------------
+  // Set client flag on mount
   useEffect(() => {
-    const cycleInterval = setInterval(() => {
-      setThemeIndex((prev) => (prev + 1) % AUTOMATED_THEMES.length);
-    }, 12000); // 12 seconds per theme for a calm, slow ambient feel
-
-    return () => clearInterval(cycleInterval);
+    setIsClient(true);
   }, []);
 
-  // Detect native browser fullscreen changes
+  // Check admin session authentication on mount
+  useEffect(() => {
+    fetch("/api/admin-login/check", { credentials: "include" })
+      .then((res) => {
+        if (res.ok) {
+          setIsAdminAuthenticated(true);
+        } else {
+          setIsAdminAuthenticated(false);
+          // Fetch fresh nonce for login
+          fetch("/api/admin-login")
+            .then((r) => r.json())
+            .then((d) => {
+              if (d.nonce) setNonce(d.nonce);
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {
+        setIsAdminAuthenticated(false);
+      })
+      .finally(() => {
+        setIsCheckingAuth(false);
+      });
+  }, []);
+
+  // Detect fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
-
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
   // -------------------------------------------------------------
-  // BACKGROUND ACCURATE TIMER LOGIC
-  // Timestamp math (Date.now()) so switching browser tabs never drifts
+  // FETCH SERVER-SYNCHRONIZED TIMER STATE FROM /api/timer
+  // -------------------------------------------------------------
+  const syncWithServer = useCallback(async () => {
+    try {
+      const res = await fetch("/api/timer");
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (data.success) {
+        const serverTime = data.serverTime || Date.now();
+        const clientNow = Date.now();
+        const offset = serverTime - clientNow;
+        clockOffsetRef.current = offset;
+
+        if (data.isRunning && data.endTime) {
+          const endMs = new Date(data.endTime).getTime();
+          const syncedClientNow = clientNow + offset;
+          const remaining = Math.max(0, endMs - syncedClientNow);
+
+          targetEndMsRef.current = endMs;
+          setRemainingMs(remaining);
+          setIsRunning(true);
+          setHasStarted(true);
+
+          localStorage.setItem(STORAGE_END_KEY, endMs.toString());
+        } else if (data.endTime && !data.isRunning && data.remainingMs === 0) {
+          targetEndMsRef.current = null;
+          setRemainingMs(0);
+          setIsRunning(false);
+          setHasStarted(true);
+        } else {
+          const savedEndTime = localStorage.getItem(STORAGE_END_KEY);
+          if (savedEndTime) {
+            const endMs = parseInt(savedEndTime, 10);
+            const syncedClientNow = clientNow + offset;
+            const remaining = Math.max(0, endMs - syncedClientNow);
+            if (remaining > 0) {
+              targetEndMsRef.current = endMs;
+              setRemainingMs(remaining);
+              setIsRunning(true);
+              setHasStarted(true);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Could not sync with server timer API, using local clock fallback.", err);
+    }
+  }, []);
+
+  // Sync with server periodically when authenticated
+  useEffect(() => {
+    if (!isAdminAuthenticated) return;
+
+    syncWithServer();
+    const syncInterval = setInterval(syncWithServer, 10000);
+    return () => clearInterval(syncInterval);
+  }, [isAdminAuthenticated, syncWithServer]);
+
+  // -------------------------------------------------------------
+  // CONTINUOUS TICK LOOP (IN SYNC WITH SERVER CLOCK)
   // -------------------------------------------------------------
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    if (!isRunning || !isAdminAuthenticated) return;
 
-    if (isRunning) {
-      if (!targetEndRef.current) {
-        targetEndRef.current = Date.now() + remainingMs;
+    const tick = () => {
+      if (!targetEndMsRef.current) return;
+      const syncedNow = Date.now() + clockOffsetRef.current;
+      const remaining = Math.max(0, targetEndMsRef.current - syncedNow);
+
+      setRemainingMs(remaining);
+
+      if (remaining <= 0) {
+        setIsRunning(false);
+        targetEndMsRef.current = null;
       }
-
-      const update = () => {
-        if (!targetEndRef.current) return;
-        const now = Date.now();
-        const diff = Math.max(0, targetEndRef.current - now);
-
-        setRemainingMs(diff);
-
-        if (diff <= 0) {
-          setIsRunning(false);
-          targetEndRef.current = null;
-          playCompletionChime();
-        }
-      };
-
-      update();
-      interval = setInterval(update, 200);
-    } else {
-      targetEndRef.current = null;
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
     };
-  }, [isRunning]);
 
-  // Window visibilitychange re-sync
-  useEffect(() => {
+    tick();
+    const interval = setInterval(tick, 100);
+
     const handleVisibility = () => {
-      if (document.visibilityState === "visible" && isRunning && targetEndRef.current) {
-        const diff = Math.max(0, targetEndRef.current - Date.now());
-        setRemainingMs(diff);
+      if (document.visibilityState === "visible") {
+        tick();
+        syncWithServer();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [isRunning]);
 
-  // Synthesized Web Audio chime on completion
-  const playCompletionChime = () => {
-    if (!soundEnabled) return;
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [isRunning, isAdminAuthenticated, syncWithServer]);
+
+  // -------------------------------------------------------------
+  // ADMIN LOGIN SUBMISSION
+  // -------------------------------------------------------------
+  const onAdminLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setErrorMsg("");
+
+    if (!creds.username || !creds.password) {
+      setErrorMsg("Please enter both username and password.");
+      return;
+    }
+
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const freqs = [523.25, 659.25, 783.99, 1046.5];
-      freqs.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = freq;
-        const start = ctx.currentTime + i * 0.12;
-        gain.gain.setValueAtTime(0.25, start);
-        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.5);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(start);
-        osc.stop(start + 0.5);
+      setLoginLoading(true);
+      const res = await fetch("/api/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: creds.username,
+          password: creds.password,
+          _nonce: nonce,
+        }),
+        credentials: "include",
       });
-    } catch (e) {}
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsAdminAuthenticated(true);
+      } else {
+        setErrorMsg(data.error || "Authentication failed. Check credentials.");
+        fetch("/api/admin-login")
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.nonce) setNonce(d.nonce);
+          })
+          .catch(() => {});
+      }
+    } catch (error: any) {
+      console.error("Admin login error", error);
+      setErrorMsg("Connection error. Please try again.");
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
-  // Handlers
-  const handleStartPause = () => {
-    if (remainingMs <= 0) return;
-    if (!isRunning) {
-      targetEndRef.current = Date.now() + remainingMs;
+  // -------------------------------------------------------------
+  // START & RESET HANDLERS
+  // -------------------------------------------------------------
+  const handleStart = async () => {
+    try {
+      const res = await fetch("/api/timer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start", durationMs: TOTAL_24_HOURS_MS }),
+      });
+      const data = await res.json();
+      if (data.success && data.endTime) {
+        const endMs = new Date(data.endTime).getTime();
+        targetEndMsRef.current = endMs;
+        const now = Date.now();
+        clockOffsetRef.current = (data.serverTime || now) - now;
+        setRemainingMs(TOTAL_24_HOURS_MS);
+        setIsRunning(true);
+        setHasStarted(true);
+        localStorage.setItem(STORAGE_END_KEY, endMs.toString());
+      } else {
+        const endMs = Date.now() + TOTAL_24_HOURS_MS;
+        targetEndMsRef.current = endMs;
+        setRemainingMs(TOTAL_24_HOURS_MS);
+        setIsRunning(true);
+        setHasStarted(true);
+        localStorage.setItem(STORAGE_END_KEY, endMs.toString());
+      }
+    } catch {
+      const endMs = Date.now() + TOTAL_24_HOURS_MS;
+      targetEndMsRef.current = endMs;
+      setRemainingMs(TOTAL_24_HOURS_MS);
       setIsRunning(true);
-    } else {
-      setIsRunning(false);
-      targetEndRef.current = null;
+      setHasStarted(true);
+      localStorage.setItem(STORAGE_END_KEY, endMs.toString());
     }
   };
 
-  const handleReset = () => {
-    setIsRunning(false);
-    targetEndRef.current = null;
-    setRemainingMs(totalMs);
-  };
-
-  const handleApplyCustomTime = () => {
-    const newTotal = (inputH * 3600 + inputM * 60 + inputS) * 1000;
-    if (newTotal > 0) {
-      setTotalMs(newTotal);
-      setRemainingMs(newTotal);
+  const handleReset = async () => {
+    if (window.confirm("Are you sure you want to reset the global timer?")) {
+      try {
+        await fetch("/api/timer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "reset" }),
+        });
+      } catch {}
+      localStorage.removeItem(STORAGE_END_KEY);
+      targetEndMsRef.current = null;
       setIsRunning(false);
-      targetEndRef.current = null;
-      setIsModalOpen(false);
+      setHasStarted(false);
+      setRemainingMs(TOTAL_24_HOURS_MS);
     }
-  };
-
-  const handlePresetSelect = (minutes: number) => {
-    const newTotal = minutes * 60 * 1000;
-    setTotalMs(newTotal);
-    setRemainingMs(newTotal);
-    setIsRunning(false);
-    targetEndRef.current = null;
   };
 
   const toggleFullscreen = () => {
@@ -206,7 +275,7 @@ export default function HarryPotterTimer() {
   };
 
   // Format strictly into Hours, Minutes, Seconds (HH : MM : SS)
-  const totalSecs = Math.ceil(remainingMs / 1000);
+  const totalSecs = Math.max(0, Math.ceil(remainingMs / 1000));
   const hours = Math.floor(totalSecs / 3600);
   const minutes = Math.floor((totalSecs % 3600) / 60);
   const seconds = totalSecs % 60;
@@ -215,90 +284,103 @@ export default function HarryPotterTimer() {
   const minutesStr = minutes.toString().padStart(2, "0");
   const secondsStr = seconds.toString().padStart(2, "0");
 
+  if (!isClient || isCheckingAuth) {
+    return (
+      <main className="min-h-screen w-full bg-black text-white flex items-center justify-center font-display-lg">
+        <div className="text-amber-400 font-label-md text-sm tracking-widest animate-pulse">
+          VERIFYING ACCESS...
+        </div>
+      </main>
+    );
+  }
+
   // =============================================================
-  // FULLSCREEN MODE VIEW (NUMBERS ONLY WITH HARRY POTTER FONT)
+  // ADMIN LOGIN VIEW (IF NOT AUTHENTICATED)
   // =============================================================
-  if (isFullscreen) {
+  if (!isAdminAuthenticated) {
     return (
       <main
-        className={`fixed inset-0 z-[9999] w-screen h-screen flex flex-col items-center justify-center bg-gradient-to-b ${theme.bg} text-white font-sans select-none overflow-hidden transition-colors duration-[4000ms] ease-in-out`}
+        className="min-h-screen w-full flex flex-col items-center justify-center p-4 text-white relative bg-cover bg-center bg-no-repeat overflow-hidden select-none"
+        style={{ backgroundImage: "url('/timer-bg.png')" }}
       >
-        {/* Exit Fullscreen Button */}
-        <button
-          onClick={toggleFullscreen}
-          className="absolute top-6 right-6 z-50 px-4 py-2 rounded-full border border-white/20 bg-black/60 text-xs font-mono tracking-widest text-amber-200 hover:border-amber-400/60 hover:bg-black/80 transition-all opacity-40 hover:opacity-100"
-        >
-          EXIT FULLSCREEN
-        </button>
+        {/* Dark Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/60 to-black/90 pointer-events-none z-0" />
 
-        {/* Ambient Backdrop Glow with 4-Second Slow Smooth Transition */}
-        <div
-          className="absolute w-[65vw] h-[65vw] rounded-full blur-[180px] pointer-events-none opacity-40 transition-all duration-[4000ms] ease-in-out"
-          style={{ backgroundColor: theme.glow }}
-        />
+        {/* Login Card */}
+        <div className="w-full max-w-sm z-10">
+          <div className="bg-black/70 backdrop-blur-2xl border border-amber-500/30 rounded-2xl p-8 shadow-[0_0_60px_rgba(255,215,0,0.12)] flex flex-col items-center gap-6">
+            
+            {/* Header / Shield Icon */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-14 h-14 rounded-full border-2 border-amber-500/40 bg-amber-500/10 flex items-center justify-center shadow-[0_0_20px_rgba(255,215,0,0.2)]">
+                <svg className="w-7 h-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] uppercase tracking-widest font-label-md text-amber-400/80">
+                  Restricted Access
+                </p>
+                <h1 className="text-2xl font-bold font-display-lg text-white tracking-wide mt-1">
+                  TIMER PORTAL
+                </h1>
+                <p className="text-xs text-neutral-400 font-label-md mt-1">
+                  Overseer credentials required
+                </p>
+              </div>
+            </div>
 
-        {/* FULLSCREEN NUMBERS DISPLAY (HOURS : MINUTES : SECONDS IN HARRY POTTER FONT) */}
-        <div className="relative z-10 flex items-center justify-center gap-2 sm:gap-6">
-          {/* Hours */}
-          <div className="flex flex-col items-center">
-            <span
-              className="font-harry-potter-bold text-[18vw] sm:text-[22vw] leading-none tracking-normal transition-colors duration-[4000ms]"
-              style={{
-                color: theme.accent,
-                textShadow: `0 0 35px ${theme.glow}, 0 0 70px ${theme.glow}`,
-              }}
-            >
-              {hoursStr}
-            </span>
-            <span className="text-xs sm:text-sm font-mono tracking-[0.3em] text-gray-400 uppercase mt-2">
-              HOURS
-            </span>
-          </div>
+            {/* Error Banner */}
+            {errorMsg && (
+              <div className="w-full p-3 rounded-xl border border-red-500/40 bg-red-950/60 text-red-300 text-xs text-center font-label-md">
+                {errorMsg}
+              </div>
+            )}
 
-          <span
-            className="font-harry-potter-bold text-[14vw] sm:text-[16vw] leading-none opacity-60 mb-6 transition-colors duration-[4000ms]"
-            style={{ color: theme.accent }}
-          >
-            :
-          </span>
+            {/* Login Form */}
+            <form onSubmit={onAdminLogin} className="w-full flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] uppercase tracking-widest font-label-md text-amber-400/90 ml-0.5">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={creds.username}
+                  onChange={(e) => setCreds({ ...creds, username: e.target.value })}
+                  placeholder="SammyK."
+                  autoComplete="username"
+                  className="w-full px-4 py-3 rounded-xl bg-neutral-900/90 border border-neutral-700 text-neutral-100 text-sm font-label-md placeholder:text-neutral-600 focus:outline-none focus:border-amber-400 transition-all"
+                  required
+                />
+              </div>
 
-          {/* Minutes */}
-          <div className="flex flex-col items-center">
-            <span
-              className="font-harry-potter-bold text-[18vw] sm:text-[22vw] leading-none tracking-normal transition-colors duration-[4000ms]"
-              style={{
-                color: theme.accent,
-                textShadow: `0 0 35px ${theme.glow}, 0 0 70px ${theme.glow}`,
-              }}
-            >
-              {minutesStr}
-            </span>
-            <span className="text-xs sm:text-sm font-mono tracking-[0.3em] text-gray-400 uppercase mt-2">
-              MINUTES
-            </span>
-          </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] uppercase tracking-widest font-label-md text-amber-400/90 ml-0.5">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={creds.password}
+                  onChange={(e) => setCreds({ ...creds, password: e.target.value })}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  className="w-full px-4 py-3 rounded-xl bg-neutral-900/90 border border-neutral-700 text-neutral-100 text-sm font-label-md placeholder:text-neutral-600 focus:outline-none focus:border-amber-400 transition-all"
+                  required
+                />
+              </div>
 
-          <span
-            className="font-harry-potter-bold text-[14vw] sm:text-[16vw] leading-none opacity-60 mb-6 transition-colors duration-[4000ms]"
-            style={{ color: theme.accent }}
-          >
-            :
-          </span>
+              <button
+                type="submit"
+                disabled={loginLoading}
+                className="magical-btn mt-2 w-full py-3.5 rounded-full text-black font-display-lg text-xs tracking-widest uppercase disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {loginLoading ? "VERIFYING..." : "ENTER TIMER STATION"}
+              </button>
+            </form>
 
-          {/* Seconds */}
-          <div className="flex flex-col items-center">
-            <span
-              className="font-harry-potter-bold text-[18vw] sm:text-[22vw] leading-none tracking-normal transition-colors duration-[4000ms]"
-              style={{
-                color: theme.accent,
-                textShadow: `0 0 35px ${theme.glow}, 0 0 70px ${theme.glow}`,
-              }}
-            >
-              {secondsStr}
-            </span>
-            <span className="text-xs sm:text-sm font-mono tracking-[0.3em] text-gray-400 uppercase mt-2">
-              SECONDS
-            </span>
+            <p className="text-[10px] text-neutral-500 font-label-md text-center">
+              Authorised personnel only
+            </p>
           </div>
         </div>
       </main>
@@ -306,249 +388,117 @@ export default function HarryPotterTimer() {
   }
 
   // =============================================================
-  // NORMAL SCREEN VIEW (SLOW AMBIENT GRADIENT & HARRY POTTER FONT)
+  // AUTHENTICATED TIMER VIEW (ULTRA-MINIMALIST & SERVER-SYNCED)
   // =============================================================
   return (
     <main
-      className={`min-h-screen w-full flex flex-col items-center justify-between p-6 sm:p-10 bg-gradient-to-b ${theme.bg} text-white font-sans overflow-hidden select-none transition-colors duration-[4000ms] ease-in-out relative`}
+      className="min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-8 text-white select-none relative bg-cover bg-center bg-no-repeat overflow-hidden cursor-default"
+      style={{ backgroundImage: "url('/timer-bg.png')" }}
     >
-      {/* Ambient Backdrop Glow */}
-      <div className="absolute inset-0 pointer-events-none opacity-30">
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] rounded-full blur-[170px] transition-all duration-[4000ms] ease-in-out"
-          style={{ backgroundColor: theme.glow }}
-        />
-      </div>
+      {/* High-Contrast Dark Vignette Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/55 to-black/90 pointer-events-none z-0" />
 
-      {/* ------------------------------------------------------------- */}
-      {/* HEADER CONTROLS */}
-      {/* ------------------------------------------------------------- */}
-      <header className="w-full max-w-5xl z-20 flex items-center justify-between py-2">
-        <Link
-          href="/"
-          className="text-xs font-serif tracking-[0.2em] text-amber-200/80 hover:text-amber-200 transition-colors uppercase font-semibold"
-        >
-          INCEPTIA 2K26
-        </Link>
+      {/* Fullscreen toggle button */}
+      <button
+        onClick={toggleFullscreen}
+        className="absolute top-6 right-6 z-30 opacity-30 hover:opacity-100 transition-opacity p-2 text-amber-300 hover:text-white"
+        title="Toggle Fullscreen"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d={
+              isFullscreen
+                ? "M9 9L4 4m0 0l5 0M4 4l0 5m11 5l5 5m0 0l-5 0m5 0l0-5M9 15l-5 5m0 0l5 0m-5 0l0-5m15-11l-5 5m5-5l-5 0m5 0l0 5"
+                : "M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+            }
+          />
+        </svg>
+      </button>
 
-        <div className="flex items-center gap-3">
-          {/* Sound Toggle */}
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="px-3.5 py-1.5 rounded-full border border-white/15 bg-black/40 text-[11px] font-mono tracking-wider text-amber-200 hover:border-amber-400/50 transition-all"
-          >
-            {soundEnabled ? "AUDIO ON" : "AUDIO MUTED"}
-          </button>
-
-          {/* Fullscreen Button */}
-          <button
-            onClick={toggleFullscreen}
-            className="px-3.5 py-1.5 rounded-full border border-amber-500/40 bg-black/40 text-[11px] font-mono tracking-wider text-amber-300 hover:bg-amber-500/20 transition-all"
-          >
-            FULLSCREEN
-          </button>
-        </div>
-      </header>
-
-      {/* ------------------------------------------------------------- */}
-      {/* HEADING: TIMER */}
-      {/* ------------------------------------------------------------- */}
-      <div className="relative z-10 my-auto flex flex-col items-center justify-center w-full max-w-5xl">
+      {/* CENTERED COUNTDOWN WRAPPER */}
+      <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-5xl text-center">
         
-        {/* Title Heading: TIMER */}
-        <h1
-          className="font-harry-potter text-4xl sm:text-6xl text-amber-200 tracking-[0.2em] uppercase font-bold mb-10 text-center transition-colors duration-[4000ms]"
-          style={{ textShadow: `0 0 25px ${theme.glow}` }}
-        >
-          TIMER
+        {/* COUNTDOWN HEADING (FONT FROM HERO SECTION) */}
+        <h1 className="font-display-lg text-4xl sm:text-7xl tracking-[0.2em] uppercase text-white drop-shadow-[0_4px_30px_rgba(0,0,0,0.95)] mb-8 sm:mb-12">
+          COUNTDOWN
         </h1>
 
-        {/* DIGIT CARDS GRID (HOURS : MINUTES : SECONDS WITH HARRY POTTER FONT) */}
-        <div className="grid grid-flow-col auto-cols-max gap-3 sm:gap-6 items-center justify-center">
+        {/* DIGIT CARDS GRID (HOURS : MINUTES : SECONDS) */}
+        <div className="grid grid-flow-col auto-cols-max gap-3 sm:gap-8 items-center justify-center my-2">
           
-          {/* Hours Card */}
+          {/* Hours */}
           <div className="flex flex-col items-center">
-            <div
-              className={`w-28 h-32 sm:w-44 sm:h-52 rounded-2xl border ${theme.border} ${theme.cardBg} backdrop-blur-xl flex items-center justify-center shadow-2xl relative overflow-hidden transition-all duration-[4000ms]`}
-            >
-              <span
-                className="font-harry-potter-bold text-6xl sm:text-9xl font-bold tracking-normal transition-colors duration-[4000ms]"
-                style={{ color: theme.accent, textShadow: `0 0 25px ${theme.glow}` }}
-              >
+            <div className="w-28 h-36 sm:w-60 sm:h-72 rounded-3xl border-2 border-white/20 bg-black/70 backdrop-blur-2xl flex items-center justify-center shadow-[0_25px_60px_rgba(0,0,0,0.9)] relative overflow-hidden">
+              <span className="font-display-lg text-6xl sm:text-[10rem] text-white drop-shadow-[0_4px_25px_rgba(0,0,0,0.95)]">
                 {hoursStr}
               </span>
-              <div className="absolute inset-x-0 top-1/2 h-[1px] bg-white/10" />
+              <div className="absolute inset-x-0 top-1/2 h-[1px] bg-white/15" />
             </div>
-            <span className="text-[10px] sm:text-xs font-mono tracking-widest text-gray-400 uppercase mt-3">
+            <span className="text-[11px] sm:text-sm font-label-md font-bold tracking-[0.4em] text-amber-400 uppercase mt-4">
               HOURS
             </span>
           </div>
 
-          <span
-            className="font-harry-potter-bold text-4xl sm:text-6xl font-bold mb-8 transition-colors duration-[4000ms]"
-            style={{ color: theme.accent }}
-          >
+          <span className="font-display-lg text-4xl sm:text-7xl mb-8 text-amber-400/80">
             :
           </span>
 
-          {/* Minutes Card */}
+          {/* Minutes */}
           <div className="flex flex-col items-center">
-            <div
-              className={`w-28 h-32 sm:w-44 sm:h-52 rounded-2xl border ${theme.border} ${theme.cardBg} backdrop-blur-xl flex items-center justify-center shadow-2xl relative overflow-hidden transition-all duration-[4000ms]`}
-            >
-              <span
-                className="font-harry-potter-bold text-6xl sm:text-9xl font-bold tracking-normal transition-colors duration-[4000ms]"
-                style={{ color: theme.accent, textShadow: `0 0 25px ${theme.glow}` }}
-              >
+            <div className="w-28 h-36 sm:w-60 sm:h-72 rounded-3xl border-2 border-white/20 bg-black/70 backdrop-blur-2xl flex items-center justify-center shadow-[0_25px_60px_rgba(0,0,0,0.9)] relative overflow-hidden">
+              <span className="font-display-lg text-6xl sm:text-[10rem] text-white drop-shadow-[0_4px_25px_rgba(0,0,0,0.95)]">
                 {minutesStr}
               </span>
-              <div className="absolute inset-x-0 top-1/2 h-[1px] bg-white/10" />
+              <div className="absolute inset-x-0 top-1/2 h-[1px] bg-white/15" />
             </div>
-            <span className="text-[10px] sm:text-xs font-mono tracking-widest text-gray-400 uppercase mt-3">
+            <span className="text-[11px] sm:text-sm font-label-md font-bold tracking-[0.4em] text-amber-400 uppercase mt-4">
               MINUTES
             </span>
           </div>
 
-          <span
-            className="font-harry-potter-bold text-4xl sm:text-6xl font-bold mb-8 transition-colors duration-[4000ms]"
-            style={{ color: theme.accent }}
-          >
+          <span className="font-display-lg text-4xl sm:text-7xl mb-8 text-amber-400/80">
             :
           </span>
 
-          {/* Seconds Card (Clean transition without popping) */}
+          {/* Seconds */}
           <div className="flex flex-col items-center">
-            <div
-              className={`w-28 h-32 sm:w-44 sm:h-52 rounded-2xl border ${theme.border} ${theme.cardBg} backdrop-blur-xl flex items-center justify-center shadow-2xl relative overflow-hidden transition-all duration-[4000ms]`}
-            >
-              <span
-                className="font-harry-potter-bold text-6xl sm:text-9xl font-bold tracking-normal transition-colors duration-[4000ms]"
-                style={{ color: theme.accent, textShadow: `0 0 25px ${theme.glow}` }}
-              >
+            <div className="w-28 h-36 sm:w-60 sm:h-72 rounded-3xl border-2 border-white/20 bg-black/70 backdrop-blur-2xl flex items-center justify-center shadow-[0_25px_60px_rgba(0,0,0,0.9)] relative overflow-hidden">
+              <span className="font-display-lg text-6xl sm:text-[10rem] text-white drop-shadow-[0_4px_25px_rgba(0,0,0,0.95)]">
                 {secondsStr}
               </span>
-              <div className="absolute inset-x-0 top-1/2 h-[1px] bg-white/10" />
+              <div className="absolute inset-x-0 top-1/2 h-[1px] bg-white/15" />
             </div>
-            <span className="text-[10px] sm:text-xs font-mono tracking-widest text-gray-400 uppercase mt-3">
+            <span className="text-[11px] sm:text-sm font-label-md font-bold tracking-[0.4em] text-amber-400 uppercase mt-4">
               SECONDS
             </span>
           </div>
 
         </div>
 
-        {/* ------------------------------------------------------------- */}
-        {/* TIMER ACTION CONTROLS */}
-        {/* ------------------------------------------------------------- */}
-        <div className="mt-10 flex items-center justify-center gap-4 z-20">
+        {/* START BUTTON (Displayed if not started on server yet) */}
+        {!hasStarted && (
           <button
-            onClick={handleStartPause}
-            className="magical-btn px-8 py-3.5 rounded-full font-serif font-bold text-xs sm:text-sm tracking-widest shadow-xl transition-all duration-[4000ms]"
-            style={{ borderColor: theme.accent }}
+            onClick={handleStart}
+            className="magical-btn mt-10 px-10 py-4 rounded-full text-black font-display-lg text-xs sm:text-sm tracking-[0.2em] uppercase shadow-[0_0_30px_rgba(251,191,36,0.6)] hover:scale-105 active:scale-95 transition-all duration-200"
           >
-            {isRunning ? "PAUSE" : "START"}
+            START COUNTDOWN
           </button>
+        )}
 
+        {/* Discreet Reset option on hover at bottom */}
+        {hasStarted && (
           <button
             onClick={handleReset}
-            className="px-6 py-3.5 rounded-full border border-white/20 bg-black/40 text-amber-200 font-serif text-xs sm:text-sm tracking-wider hover:bg-white/10 transition-all"
+            className="mt-12 text-[10px] font-label-md text-gray-500 hover:text-red-400 transition-colors uppercase tracking-widest opacity-30 hover:opacity-100"
           >
-            RESET
+            Reset Timer
           </button>
-
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-6 py-3.5 rounded-full border border-white/20 bg-black/40 text-amber-200 font-serif text-xs sm:text-sm tracking-wider hover:bg-white/10 transition-all"
-          >
-            CUSTOMISE
-          </button>
-        </div>
-
-        {/* Quick Presets Bar */}
-        <div className="mt-6 flex items-center justify-center gap-2">
-          {[15, 25, 45, 60].map((mVal) => (
-            <button
-              key={mVal}
-              onClick={() => handlePresetSelect(mVal)}
-              className="px-4 py-1.5 rounded-full border border-white/10 bg-black/40 text-gray-300 text-xs font-mono tracking-wider hover:border-amber-400 hover:text-amber-200 transition-all"
-            >
-              {mVal} MIN
-            </button>
-          ))}
-        </div>
+        )}
 
       </div>
-
-      {/* ------------------------------------------------------------- */}
-      {/* CUSTOMISATION MODAL */}
-      {/* ------------------------------------------------------------- */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="w-full max-w-md p-6 rounded-2xl border border-amber-500/40 bg-[#0e0a16] shadow-2xl flex flex-col gap-5">
-            <div className="flex justify-between items-center border-b border-white/10 pb-3">
-              <h3 className="font-harry-potter text-2xl text-amber-300">
-                CUSTOMISE TIMER DURATION
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-white text-xs font-mono"
-              >
-                CLOSE
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="flex flex-col items-center">
-                <label className="text-[10px] font-mono text-amber-300 uppercase mb-1">HOURS</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="24"
-                  value={inputH}
-                  onChange={(e) => setInputH(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full text-center p-3 rounded-xl border border-amber-500/30 bg-black/60 font-mono text-xl text-white focus:border-amber-400 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex flex-col items-center">
-                <label className="text-[10px] font-mono text-amber-300 uppercase mb-1">MINUTES</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="59"
-                  value={inputM}
-                  onChange={(e) => setInputM(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full text-center p-3 rounded-xl border border-amber-500/30 bg-black/60 font-mono text-xl text-white focus:border-amber-400 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex flex-col items-center">
-                <label className="text-[10px] font-mono text-amber-300 uppercase mb-1">SECONDS</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="59"
-                  value={inputS}
-                  onChange={(e) => setInputS(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full text-center p-3 rounded-xl border border-amber-500/30 bg-black/60 font-mono text-xl text-white focus:border-amber-400 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={handleApplyCustomTime}
-              className="magical-btn w-full py-3 rounded-xl text-xs font-bold tracking-widest"
-            >
-              APPLY SETTINGS
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Minimal Footer */}
-      <footer className="w-full max-w-5xl z-20 flex justify-between items-center py-2 text-[10px] font-mono text-gray-500 tracking-wider">
-        <span>INCEPTIA 2026 TIMER</span>
-        <span>BACKGROUND ACCURATE</span>
-      </footer>
     </main>
   );
 }

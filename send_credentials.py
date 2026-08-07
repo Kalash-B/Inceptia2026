@@ -34,8 +34,8 @@ SKIP_TEAMS    = {}                   # Test/placeholder teams to skip
 SEND_DELAY_S  = 1.5                                 # Delay between sends (s)
 # ---------------------------------------------------------------------------
 
-TEAM_CSV  = Path(__file__).parent / "src" / "data" / "team.csv"
-TEAM_JSON = Path(__file__).parent / "src" / "data" / "team.json"
+TEAM_CSV  = Path(__file__).parent / "src" / "data" / "faculty.csv"
+TEAM_JSON = Path(__file__).parent / "src" / "data" / "faculty.json"
 
 
 def build_html(member: dict, team_name: str, domain: str) -> str:
@@ -44,9 +44,9 @@ def build_html(member: dict, team_name: str, domain: str) -> str:
     logo_url  = f"{SITE_URL}/inceptia_logo.webp"
     hero_url  = f"{SITE_URL}/hero-bg.webp"
     name      = member["name"]
-    mail      = member["mail"]
+    mail      = member.get("mail") or member.get("email")
     password  = member["password"]
-    position  = member.get("position", "Member")
+    position  = member.get("position", "Faculty")
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -299,13 +299,13 @@ def build_html(member: dict, team_name: str, domain: str) -> str:
 def build_plain(member: dict, team_name: str, domain: str) -> str:
     login_url = f"{SITE_URL}/login"
     dash_url  = f"{SITE_URL}/dashboard"
+    mail      = member.get("mail") or member.get("email")
     return (
         f"Hello {member['name']},\n\n"
         f"Welcome to Inceptia 2026!\n\n"
-        f"You are registered as {member.get('position', 'Member')} of team "
-        f"'{team_name}' in the {domain} domain.\n\n"
+        f"You are registered as {member.get('position', 'Faculty')} for Inceptia 2026.\n\n"
         f"--- YOUR LOGIN CREDENTIALS ---\n"
-        f"Email   : {member['mail']}\n"
+        f"Email   : {mail}\n"
         f"Password: {member['password']}\n\n"
         f"Login here: {login_url}\n\n"
         f"After logging in, visit your dashboard to find your QR pass:\n"
@@ -317,15 +317,16 @@ def build_plain(member: dict, team_name: str, domain: str) -> str:
 
 def send_mail(smtp: smtplib.SMTP_SSL, member: dict, team_name: str, domain: str) -> None:
     first_name = member["name"].split()[0]
+    mail = member.get("mail") or member.get("email")
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"Inceptia 2026 \u2014 Your Login Credentials, {first_name}!"
     msg["From"]    = f"Inceptia 2026 <{SENDER_EMAIL}>"
-    msg["To"]      = member["mail"]
+    msg["To"]      = mail
 
     msg.attach(MIMEText(build_plain(member, team_name, domain), "plain"))
     msg.attach(MIMEText(build_html(member, team_name, domain),  "html"))
 
-    smtp.sendmail(SENDER_EMAIL, member["mail"], msg.as_string())
+    smtp.sendmail(SENDER_EMAIL, mail, msg.as_string())
 
 
 def main(dry_run: bool = False) -> None:
@@ -335,23 +336,44 @@ def main(dry_run: bool = False) -> None:
         print(f"Loading recipients from JSON: {TEAM_JSON}")
         with open(TEAM_JSON, encoding="utf-8") as f:
             data = json.load(f)
-        for team in data.get("teams", []):
-            team_name = team.get("name", "Unknown")
-            domain    = team.get("domain", "Unknown")
-            if team_name in SKIP_TEAMS:
-                print(f"[SKIP ] Team '{team_name}' is in SKIP_TEAMS — skipping.")
-                continue
-            for member in team.get("team", []):
+        
+        if isinstance(data, list):
+            for member in data:
+                mail = member.get("email") or member.get("mail")
+                if not mail:
+                    continue
+                member["mail"] = mail
+                team_name = member.get("teamName", "Faculty")
+                domain    = member.get("domain", "Faculty")
                 recipients.append((member, team_name, domain))
+        elif isinstance(data, dict):
+            teams = data.get("teams") or data.get("faculty") or []
+            if isinstance(teams, list):
+                for item in teams:
+                    if isinstance(item, dict) and "team" in item:
+                        team_name = item.get("name", "Unknown")
+                        domain    = item.get("domain", "Unknown")
+                        if team_name in SKIP_TEAMS:
+                            print(f"[SKIP ] Team '{team_name}' is in SKIP_TEAMS — skipping.")
+                            continue
+                        for member in item.get("team", []):
+                            member["mail"] = member.get("email") or member.get("mail")
+                            recipients.append((member, team_name, domain))
+                    elif isinstance(item, dict):
+                        member = item
+                        mail = member.get("email") or member.get("mail")
+                        if mail:
+                            member["mail"] = mail
+                            recipients.append((member, "Faculty", "Faculty"))
     elif TEAM_CSV.exists():
         print(f"Loading recipients from CSV: {TEAM_CSV}")
         with open(TEAM_CSV, mode="r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 clean_row = {k.strip(): v.strip() for k, v in row.items() if k}
-                team_name = clean_row.get("Team Name", "Unknown")
+                team_name = clean_row.get("Team Name", "Faculty")
                 name = clean_row.get("Name", "")
-                mail = clean_row.get("Email", "")
+                mail = clean_row.get("Email") or clean_row.get("mail") or clean_row.get("Email / Login ID", "")
 
                 if not mail:
                     continue
@@ -364,11 +386,11 @@ def main(dry_run: bool = False) -> None:
                     "name": name,
                     "mail": mail,
                     "password": "Sammy",
-                    "position": "Member",
+                    "position": "Lead",
                 }
-                recipients.append((member, team_name, team_name))
+                recipients.append((member, team_name, "Faculty"))
     else:
-        print("[ERROR] Neither team.json nor team.csv was found.")
+        print("[ERROR] Neither faculty.json nor faculty.csv was found.")
         sys.exit(1)
 
     total = len(recipients)
